@@ -26,6 +26,7 @@ enum
 	ASIA_AES,
 	JAPAN_AES,
 
+	UNI_V40,
 	UNI_V33,
 	UNI_V32,
 	UNI_V31,

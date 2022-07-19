@@ -16,10 +16,10 @@ PSPSDK   = $(shell psp-config --pspsdk-path)
 endif
 
 # OS tools
-CP       = $(shell psp-config --pspdev-path)/bin/cp
-RM       = $(shell psp-config --pspdev-path)/bin/rm
-MKDIR    = $(shell psp-config --pspdev-path)/bin/mkdir
-TRUE    = $(shell psp-config --pspdev-path)/bin/true
+CP       = cp
+RM       = rm
+MKDIR    = mkdir -p
+TRUE    = true
 
 CC       = psp-gcc
 CXX      = psp-g++
@@ -104,9 +104,11 @@ LIBS     := $(LIBS) $(PSPSDK_LIBS) $(PSPSDK_LIBC_LIB) -lpspnet \
 			-lpspuser
 else
 PSPSDK_LIBS = -lpspdebug -lpspdisplay -lpspge -lpspctrl -lpspsdk
-LIBS     := $(LIBS) $(PSPSDK_LIBS) $(PSPSDK_LIBC_LIB) -lpspnet \
-			-lpspnet_inet -lpspnet_apctl -lpspnet_resolver -lpsputility \
-			-lpspuser -lpspkernel
+#LIBS     := $(LIBS) $(PSPSDK_LIBS) $(PSPSDK_LIBC_LIB) -lpspnet \
+			#-lpspnet_inet -lpspnet_apctl -lpspnet_resolver -lpsputility \
+			#-lpspuser -lpspkernel
+LIBS := $(LIBS) -lpspdebug -lpspdisplay -lpspge -lpspctrl \
+		-lpspnet -lpspnet_apctl
 endif
 endif
 
