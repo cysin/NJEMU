@@ -122,21 +122,50 @@ int zip_findnext(struct zip_find_t *file)
 
 int zopen(const char *filename)
 {
+	int result;
 	zip_cached_len = 0;
+
+	printf("[DEBUG] zopen: Opening file '%s'\n", filename);
+	printf("[DEBUG] zopen: unzfile=%p\n", unzfile);
+	fflush(stdout);
 
 	if (unzfile == NULL)
 	{
 		SceUID fd;
 
+		printf("[DEBUG] zopen: unzfile is NULL, trying direct file open\n");
+		fflush(stdout);
 		strcpy(basedirend, filename);
 		fd = sceIoOpen(basedir, PSP_O_RDONLY, 0777);
+		printf("[DEBUG] zopen: sceIoOpen returned %d\n", (int)fd);
+		fflush(stdout);
 		return (fd < 0) ? -1 : (int)fd;
 	}
 
-	if (unzLocateFile(unzfile, filename) == UNZ_OK)
-		if (unzOpenCurrentFile(unzfile) == UNZ_OK)
-			return (int)unzfile;
+	printf("[DEBUG] zopen: Calling unzLocateFile\n");
+	fflush(stdout);
+	result = unzLocateFile(unzfile, filename);
+	printf("[DEBUG] zopen: unzLocateFile returned %d (UNZ_OK=%d)\n", result, UNZ_OK);
+	fflush(stdout);
 
+	if (result == UNZ_OK)
+	{
+		printf("[DEBUG] zopen: Calling unzOpenCurrentFile\n");
+		fflush(stdout);
+		result = unzOpenCurrentFile(unzfile);
+		printf("[DEBUG] zopen: unzOpenCurrentFile returned %d (UNZ_OK=%d)\n", result, UNZ_OK);
+		fflush(stdout);
+
+		if (result == UNZ_OK)
+		{
+			printf("[DEBUG] zopen: SUCCESS, returning file descriptor\n");
+			fflush(stdout);
+			return (int)(intptr_t)unzfile;
+		}
+	}
+
+	printf("[DEBUG] zopen: FAILED, returning -1\n");
+	fflush(stdout);
 	return -1;
 }
 

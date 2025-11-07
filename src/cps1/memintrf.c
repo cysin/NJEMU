@@ -133,10 +133,11 @@ static int load_rom_cpu1(void)
 		printf("[DEBUG] load_rom_cpu1: Opening ROM file '%s' (CRC: 0x%08x)\n",
 		       fname, cpu1rom[i].crc);
 		fflush(stdout);
-		if ((res = file_open(game_name, parent, cpu1rom[i].crc, fname)) < 0)
+		res = file_open(game_name, parent, cpu1rom[i].crc, fname);
+		printf("[DEBUG] load_rom_cpu1: file_open() returned %d\n", res);
+		fflush(stdout);
+		if (res == -1 || res == -2)
 		{
-			printf("[DEBUG] load_rom_cpu1: file_open() returned %d\n", res);
-			fflush(stdout);
 			if (res == -2)
 			{
 				printf("[DEBUG] load_rom_cpu1: CRC mismatch for '%s'\n", fname);
@@ -189,7 +190,8 @@ static int load_rom_cpu2(void)
 	for (i = 0; i < num_cpu2rom; )
 	{
 		strcpy(fname, cpu2rom[i].name);
-		if ((res = file_open(game_name, parent, cpu2rom[i].crc, fname)) < 0)
+		res = file_open(game_name, parent, cpu2rom[i].crc, fname);
+		if (res == -1 || res == -2)
 		{
 			if (res == -2)
 				error_crc(fname);
@@ -230,7 +232,8 @@ static int load_rom_gfx1(void)
 	for (i = 0; i < num_gfx1rom; )
 	{
 		strcpy(fname, gfx1rom[i].name);
-		if ((res = file_open(game_name, parent, gfx1rom[i].crc, fname)) < 0)
+		res = file_open(game_name, parent, gfx1rom[i].crc, fname);
+		if (res == -1 || res == -2)
 		{
 			if (res == -2)
 				error_crc(fname);
@@ -273,7 +276,8 @@ static int load_rom_sound1(void)
 	for (i = 0; i < num_snd1rom; )
 	{
 		strcpy(fname, snd1rom[i].name);
-		if ((res = file_open(game_name, parent, snd1rom[i].crc, fname)) < 0)
+		res = file_open(game_name, parent, snd1rom[i].crc, fname);
+		if (res == -1 || res == -2)
 		{
 			if (res == -2)
 				error_crc(fname);
