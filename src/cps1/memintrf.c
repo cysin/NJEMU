@@ -8,6 +8,9 @@
 
 #include "cps1.h"
 
+#ifdef SDL2
+#include <sys/mman.h>
+#endif
 
 #define M68K_AMASK 0x00ffffff
 #define Z80_AMASK 0x0000ffff
@@ -53,9 +56,17 @@ UINT32 memory_length_sound1;
 UINT32 memory_length_user1;
 UINT32 memory_length_user2;
 
+#ifdef SDL2
+// On 64-bit SDL2, allocate these dynamically in low 32-bit address space
+UINT8  *cps1_ram;
+UINT16 *cps1_gfxram;
+UINT16 *cps1_output;
+#else
+// On PSP, use static arrays
 UINT8  ALIGN_DATA cps1_ram[0x10000];
 UINT16 ALIGN_DATA cps1_gfxram[0x30000 >> 1];
 UINT16 ALIGN_DATA cps1_output[0x100 >> 1];
+#endif
 
 UINT8 *qsound_sharedram1;
 UINT8 *qsound_sharedram2;
@@ -82,6 +93,24 @@ static UINT8 *static_ram2;
 /******************************************************************************
 	プロトタイプ
 ******************************************************************************/
+
+#ifdef SDL2
+// Custom allocator for 64-bit that allocates in low 32-bit address space
+// This is required for C68K emulator which stores pointers in UINT32
+static void* memalign_32bit(size_t alignment, size_t size)
+{
+	(void)alignment; // Ignore alignment parameter, mmap provides page-aligned memory
+	void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
+	                 MAP_PRIVATE | MAP_ANONYMOUS | MAP_32BIT, -1, 0);
+	if (ptr == MAP_FAILED)
+	{
+		fprintf(stderr, "ERROR: Failed to allocate %zu bytes in low 32-bit address space\n", size);
+		return NULL;
+	}
+	return ptr;
+}
+#define memalign memalign_32bit
+#endif
 
 UINT8 (*z80_read_memory_8)(UINT32 offset);
 void (*z80_write_memory_8)(UINT32 offset, UINT8 data);
@@ -595,6 +624,21 @@ int memory_init(void)
 	memory_length_sound1 = 0;
 	memory_length_user1  = 0;
 	memory_length_user2  = 0;
+
+#ifdef SDL2
+	// Allocate static arrays in low 32-bit address space
+	cps1_ram = (UINT8 *)memalign(16, 0x10000);
+	cps1_gfxram = (UINT16 *)memalign(16, 0x30000);
+	cps1_output = (UINT16 *)memalign(16, 0x100);
+	if (!cps1_ram || !cps1_gfxram || !cps1_output)
+	{
+		printf("[ERROR] Failed to allocate cps1 arrays\n");
+		return 0;
+	}
+	memset(cps1_ram, 0, 0x10000);
+	memset(cps1_gfxram, 0, 0x30000);
+	memset(cps1_output, 0, 0x100);
+#endif
 
 	printf("[DEBUG] memory_init: Skipping pad_wait_clear on SDL2\n");
 	fflush(stdout);

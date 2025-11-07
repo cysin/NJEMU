@@ -2,7 +2,7 @@
 
 	memintrf.c
 
-	CPS1¥á¥â¥ê¥¤¥ó¥¿¥Õ¥§©`¥¹évÊý
+	CPS1ï¿½ï¿½ï¿½ê¥¤ï¿½ó¥¿¥Õ¥ï¿½ï¿½`ï¿½ï¿½ï¿½vï¿½ï¿½
 
 ******************************************************************************/
 
@@ -29,9 +29,17 @@ extern UINT32 memory_length_user2;
 #endif
 extern UINT32 memory_length_user3;
 
+#ifdef SDL2
+// On 64-bit SDL2, these are dynamically allocated in low 32-bit address space
+extern UINT8 *cps1_ram;
+extern UINT16 *cps1_gfxram;
+extern UINT16 *cps1_output;
+#else
+// On PSP, these are static arrays
 extern UINT8 cps1_ram[0x10000];
 extern UINT16 cps1_gfxram[0x30000 >> 1];
 extern UINT16 cps1_output[0x100 >> 1];
+#endif
 
 extern UINT8 *qsound_sharedram1;
 extern UINT8 *qsound_sharedram2;
