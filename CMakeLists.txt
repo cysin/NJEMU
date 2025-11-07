@@ -166,6 +166,10 @@ if(ADHOC)
     list(APPEND SDL2_SOURCES src/sdl2/adhoc.c)
 endif()
 
+if(BUILD_NCDZPSP)
+    list(APPEND SDL2_SOURCES src/sdl2/mp3.c)
+endif()
+
 # Font files (reuse from PSP)
 set(FONT_SOURCES
     src/psp/font/graphic.c
