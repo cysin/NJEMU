@@ -8,7 +8,11 @@
 
 ******************************************************************************/
 
+#ifdef SDL2
+#include "sdl2/sdl2.h"
+#else
 #include "psp/psp.h"
+#endif
 
 #define NUM_FONTS	0x60
 

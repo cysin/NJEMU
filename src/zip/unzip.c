@@ -4,7 +4,11 @@
    Read unzip.h for more info
 */
 
+#ifdef SDL2
+#include "sdl2/sdl2.h"
+#else
 #include "psp/psp.h"
+#endif
 #include "zlib.h"
 #include "unzip.h"
 

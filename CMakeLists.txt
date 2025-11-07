@@ -69,7 +69,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-but-set-variable -Wno-format")
 #------------------------------------------------------------------------------
 
 add_definitions(
-    -DINLINE='static inline'
+    -DINLINE="static inline"
     -Dinline=inline
     -D__inline__=inline
     -DBUILD_${TARGET}=1

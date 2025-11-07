@@ -6,7 +6,11 @@
 
 ******************************************************************************/
 
+#ifdef SDL2
+#include "sdl2/sdl2.h"
+#else
 #include "psp/psp.h"
+#endif
 
 const unsigned char ALIGN_DATA shadow[9][8][4] = {
 	{	//	00 - left top

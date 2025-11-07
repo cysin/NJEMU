@@ -9,6 +9,10 @@
 #ifndef SDL2_UI_MENU_H
 #define SDL2_UI_MENU_H
 
+// UI texture buffer for thumbnail and UI rendering
+extern void *ui_texture_buffer;
+#define UI_TEXTURE ui_texture_buffer
+
 // Menu functions
 void showmenu(void);
 void show_color_menu(void);

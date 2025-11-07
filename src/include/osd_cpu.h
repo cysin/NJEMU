@@ -26,6 +26,31 @@ typedef SceLong64		INT64;
 #define data16_t	UINT16
 #define data32_t	UINT32
 
+#elif defined(SDL2)
+
+#include <stdint.h>
+
+typedef uint8_t         UINT8;
+typedef uint16_t        UINT16;
+typedef uint32_t        UINT32;
+typedef uint64_t        UINT64;
+
+typedef int8_t          INT8;
+typedef int16_t         INT16;
+typedef int32_t         INT32;
+typedef int64_t         INT64;
+
+// Lowercase aliases for CPU emulation code
+typedef uint8_t         u8;
+typedef uint16_t        u16;
+typedef uint32_t        u32;
+typedef uint64_t        u64;
+
+#define offs_t		UINT32
+#define data8_t		UINT8
+#define data16_t	UINT16
+#define data32_t	UINT32
+
 #else
 
 typedef unsigned char       UINT8;

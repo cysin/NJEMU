@@ -2,14 +2,18 @@
 
 	emumain.c
 
-	ƒGƒ~ƒ…ƒŒ[ƒVƒ‡ƒ“ƒRƒA
+	ï¿½Gï¿½~ï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½Rï¿½A
 
 ******************************************************************************/
 
 #ifndef EMUMAIN_H
 #define EMUMAIN_H
 
+#ifdef SDL2
+#include "sdl2/sdl2.h"
+#else
 #include "psp/psp.h"
+#endif
 #include "include/cpuintrf.h"
 #include "include/memory.h"
 #include "zip/zfile.h"

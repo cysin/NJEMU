@@ -35,6 +35,9 @@ SDL_Texture *sdl_texture = NULL;
 
 RECT full_rect = { 0, 0, SCR_WIDTH, SCR_HEIGHT };
 
+// UI texture buffer for thumbnails and UI rendering
+void *ui_texture_buffer = NULL;
+
 /******************************************************************************
 	Functions
 ******************************************************************************/
@@ -151,6 +154,15 @@ void video_init(void)
 	work_frame = work_surface->pixels;
 	tex_frame = tex_surface->pixels;
 
+	// Allocate UI texture buffer (for thumbnails and UI rendering)
+	// Always use 16-bit format for UI texture
+	if (ui_texture_buffer == NULL)
+	{
+		ui_texture_buffer = malloc(BUF_WIDTH * SCR_HEIGHT * 2);
+		if (ui_texture_buffer)
+			memset(ui_texture_buffer, 0, BUF_WIDTH * SCR_HEIGHT * 2);
+	}
+
 	// Clear all buffers
 	video_clear_frame(show_frame);
 	video_clear_frame(draw_frame);
@@ -177,6 +189,12 @@ void video_exit(void)
 	if (sdl_texture) SDL_DestroyTexture(sdl_texture);
 	if (sdl_renderer) SDL_DestroyRenderer(sdl_renderer);
 	if (sdl_window) SDL_DestroyWindow(sdl_window);
+
+	if (ui_texture_buffer)
+	{
+		free(ui_texture_buffer);
+		ui_texture_buffer = NULL;
+	}
 
 	tex_surface = work_surface = draw_surface = show_surface = NULL;
 	sdl_texture = NULL;

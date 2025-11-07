@@ -75,11 +75,53 @@ enum
 	CPUCLOCK_MAX
 };
 
+// PSP clock compatibility (no-ops on SDL2)
+#define PSPCLOCK_222 CPUCLOCK_DEFAULT
+#define PSPCLOCK_266 CPUCLOCK_DEFAULT
+#define PSPCLOCK_333 CPUCLOCK_DEFAULT
+
+// PSP file I/O compatibility
+#include <fcntl.h>
+typedef int SceUID;
+#define sceIoOpen(path, flags, mode) open(path, flags, mode)
+#define sceIoClose(fd) close(fd)
+#define sceIoRead(fd, buf, size) read(fd, buf, size)
+#define sceIoWrite(fd, buf, size) write(fd, buf, size)
+#define sceIoLseek(fd, offset, whence) lseek(fd, offset, whence)
+#define sceIoRemove(path) unlink(path)
+#define sceIoRename(oldpath, newpath) rename(oldpath, newpath)
+#define PSP_O_RDONLY O_RDONLY
+#define PSP_O_WRONLY O_WRONLY
+#define PSP_O_CREAT O_CREAT
+
+// PSP time compatibility
+typedef struct {
+    unsigned short year;
+    unsigned short month;
+    unsigned short day;
+    unsigned short hour;
+    unsigned short minute;
+    unsigned short second;
+    unsigned int microsecond;
+} pspTime;
+
+void sceRtcGetCurrentClockLocalTime(pspTime *time);
+
+// PSP cache functions (SDL2 stubs - no cache needed)
+void *cache_alloc_state_buffer(int size);
+void cache_free_state_buffer(int size);
+
+// PSP system button compatibility
+#define systembuttons_available 0
+#define readHomeButton() 0
+#define sceKernelDelayThread(us) SDL_Delay((us)/1000)
+
 // Global variables
 extern volatile int Loop;
 extern volatile int Sleep;
 extern char launchDir[MAX_PATH];
 extern int cpu_clock_setting;
+extern int psp_cpuclock;
 extern int njemu_debug;
 
 // Functions

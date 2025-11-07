@@ -16,6 +16,7 @@ volatile int Loop;
 volatile int Sleep;
 char launchDir[MAX_PATH];
 int cpu_clock_setting = CPUCLOCK_DEFAULT;
+int psp_cpuclock = CPUCLOCK_DEFAULT;
 int njemu_debug = 0;
 
 /******************************************************************************
@@ -124,4 +125,42 @@ void sdl2_handle_events(void)
 void sdl2_delay(uint32_t ms)
 {
 	SDL_Delay(ms);
+}
+
+
+/*------------------------------------------------------
+	PSP compatibility functions
+------------------------------------------------------*/
+
+// Get current time (PSP RTC compatibility)
+void sceRtcGetCurrentClockLocalTime(pspTime *psp_time)
+{
+	time_t now;
+	struct tm *local;
+
+	now = time(NULL);
+	local = localtime(&now);
+
+	if (local && psp_time)
+	{
+		psp_time->year = local->tm_year + 1900;
+		psp_time->month = local->tm_mon + 1;
+		psp_time->day = local->tm_mday;
+		psp_time->hour = local->tm_hour;
+		psp_time->minute = local->tm_min;
+		psp_time->second = local->tm_sec;
+		psp_time->microsecond = 0;
+	}
+}
+
+// Cache buffer allocation (no-op on SDL2)
+void *cache_alloc_state_buffer(int size)
+{
+	return malloc(size);
+}
+
+// Cache buffer free (no-op on SDL2)
+void cache_free_state_buffer(int size)
+{
+	// No-op on SDL2 - memory is freed normally
 }
