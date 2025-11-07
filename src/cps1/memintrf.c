@@ -564,7 +564,9 @@ int memory_init(void)
 	memory_length_user1  = 0;
 	memory_length_user2  = 0;
 
+#ifndef SDL2
 	pad_wait_clear();
+#endif
 	video_clear_screen();
 	msg_screen_init(WP_LOGO, ICON_SYSTEM, TEXT(LOAD_ROM));
 
