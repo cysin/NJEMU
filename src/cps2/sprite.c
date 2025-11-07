@@ -2,7 +2,7 @@
 
 	sprite.c
 
-	CPS2 ƒXƒvƒ‰ƒCƒgƒ}ƒl[ƒWƒƒ
+	CPS2 ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½}ï¿½lï¿½[ï¿½Wï¿½ï¿½
 
 ******************************************************************************/
 
@@ -10,7 +10,7 @@
 
 
 /******************************************************************************
-	’è”/ƒ}ƒNƒ“™
+	ï¿½è”/ï¿½}ï¿½Nï¿½ï¿½ï¿½ï¿½
 ******************************************************************************/
 
 #define TEXTURE_HEIGHT	512
@@ -20,7 +20,7 @@
 
 
 /******************************************************************************
-	ƒvƒƒgƒ^ƒCƒv
+	ï¿½vï¿½ï¿½ï¿½gï¿½^ï¿½Cï¿½v
 ******************************************************************************/
 
 void (*blit_finish_object)(int start_pri, int end_pri);
@@ -31,9 +31,16 @@ void (*blit_draw_scroll2)(INT16 x, INT16 y, UINT32 code, UINT16 attr);
 static void blit_draw_scroll2_software(INT16 x, INT16 y, UINT32 code, UINT16 attr);
 static void blit_draw_scroll2_hardware(INT16 x, INT16 y, UINT32 code, UINT16 attr);
 
+#ifdef SDL2
+// SDL2 software rendering functions
+extern void sdl2_draw_sprite_16x16(INT16 x, INT16 y, UINT32 code, UINT16 attr);
+extern void sdl2_draw_scroll1_8x8(INT16 x, INT16 y, UINT32 code, UINT16 attr);
+extern void sdl2_draw_scroll3_32x32(INT16 x, INT16 y, UINT32 code, UINT16 attr);
+#endif
+
 
 /******************************************************************************
-	ƒ[ƒJƒ‹•Ï”/\‘¢‘Ì
+	ï¿½ï¿½ï¿½[ï¿½Jï¿½ï¿½ï¿½Ïï¿½/ï¿½\ï¿½ï¿½ï¿½ï¿½
 ******************************************************************************/
 
 typedef struct sprite_t SPRITE;
@@ -66,8 +73,16 @@ static RECT cps_clip[6] =
 	{ 138, 0, 138 + 204,     272 }	    // option_stretch = 5  (204x272 3:4 vertical)
 };
 
+#ifdef SDL2
+// For SDL2, export these so sprite_sdl2.c can use them
+INT16 clip_min_y;
+INT16 clip_max_y;
+UINT16 *scrbitmap;
+#else
 static INT16 clip_min_y;
 static INT16 clip_max_y;
+static UINT16 *scrbitmap;
+#endif
 
 static INT16 object_min_y;
 static INT16 scroll2_min_y;
@@ -76,11 +91,10 @@ static INT16 scroll2_sy;
 static INT16 scroll2_ey;
 
 static UINT8 *pen_usage;
-static UINT16 *scrbitmap;
 
 
 /*------------------------------------------------------------------------
-	OBJECT: ƒLƒƒƒ‰ƒNƒ^“™
+	OBJECT: ï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½Nï¿½^ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 #define OBJECT_HASH_SIZE		0x200
@@ -97,7 +111,7 @@ static UINT16 object_texture_num;
 
 
 /*------------------------------------------------------------------------
-	SCROLL1: ƒXƒNƒ[ƒ‹–Ê1(ƒeƒLƒXƒg“™)
+	SCROLL1: ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½1(ï¿½eï¿½Lï¿½Xï¿½gï¿½ï¿½)
 ------------------------------------------------------------------------*/
 
 #define SCROLL1_HASH_SIZE		0x200
@@ -114,7 +128,7 @@ static UINT16 scroll1_texture_num;
 
 
 /*------------------------------------------------------------------------
-	SCROLL2: ƒXƒNƒ[ƒ‹–Ê2
+	SCROLL2: ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½2
 ------------------------------------------------------------------------*/
 
 #define SCROLL2_HASH_SIZE		0x100
@@ -131,7 +145,7 @@ static UINT16 scroll2_texture_num;
 
 
 /*------------------------------------------------------------------------
-	SCROLL3: ƒXƒNƒ[ƒ‹–Ê3
+	SCROLL3: ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½3
 ------------------------------------------------------------------------*/
 
 #define SCROLL3_HASH_SIZE		0x40
@@ -148,7 +162,7 @@ static UINT16 scroll3_texture_num;
 
 
 /*------------------------------------------------------------------------
-	’¸“_ƒf[ƒ^
+	ï¿½ï¿½ï¿½_ï¿½fï¿½[ï¿½^
 ------------------------------------------------------------------------*/
 
 static OBJECT *vertices_object_head[8];
@@ -162,7 +176,7 @@ static struct Vertex ALIGN_DATA vertices_scroll[2][SCROLL1_MAX_SPRITES * 2];
 
 
 /*------------------------------------------------------------------------
-	ƒJƒ‰[ƒ‹ƒbƒNƒAƒbƒvƒe[ƒuƒ‹
+	ï¿½Jï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½bï¿½Nï¿½Aï¿½bï¿½vï¿½eï¿½[ï¿½uï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 static UINT16 *clut;
@@ -179,7 +193,7 @@ static const UINT32 ALIGN_DATA color_table[16] =
 
 
 /*------------------------------------------------------------------------
-	'swizzle'ƒeƒNƒXƒ`ƒƒƒAƒhƒŒƒXŒvŽZƒe[ƒuƒ‹ (8bitƒJƒ‰[)
+	'swizzle'ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½Aï¿½hï¿½ï¿½ï¿½Xï¿½vï¿½Zï¿½eï¿½[ï¿½uï¿½ï¿½ (8bitï¿½Jï¿½ï¿½ï¿½[)
 ------------------------------------------------------------------------*/
 
 static const int ALIGN_DATA swizzle_table_8bit[32] =
@@ -192,7 +206,7 @@ static const int ALIGN_DATA swizzle_table_8bit[32] =
 
 
 /******************************************************************************
-	SCROLL2 ƒ\ƒtƒgƒEƒFƒA•`‰æ
+	SCROLL2 ï¿½\ï¿½tï¿½gï¿½Eï¿½Fï¿½Aï¿½`ï¿½ï¿½
 ******************************************************************************/
 
 static void drawgfx16_16x16(UINT32 *src, UINT16 *dst, UINT16 *pal, int lines);
@@ -380,7 +394,7 @@ static void drawgfx16_16x16_flipxy(UINT32 *src, UINT16 *dst, UINT16 *pal, int li
 
 
 /*------------------------------------------------------------------------
-	16bpp 16x16 (“§‰ß‚È‚µ)
+	16bpp 16x16 (ï¿½ï¿½ï¿½ß‚È‚ï¿½)
 ------------------------------------------------------------------------*/
 
 static void drawgfx16_16x16_opaque(UINT32 *src, UINT16 *dst, UINT16 *pal, int lines)
@@ -501,11 +515,11 @@ static void drawgfx16_16x16_flipxy_opaque(UINT32 *src, UINT16 *dst, UINT16 *pal,
 
 
 /******************************************************************************
-	OBJECTƒXƒvƒ‰ƒCƒgŠÇ—
+	OBJECTï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ç—ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	OBJECTƒeƒNƒXƒ`ƒƒ‚©‚çƒXƒvƒ‰ƒCƒg”Ô†‚ðŽæ“¾
+	OBJECTï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ôï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------------------------*/
 
 static INT32 object_get_sprite(UINT32 key)
@@ -532,7 +546,7 @@ static INT32 object_get_sprite(UINT32 key)
 
 
 /*------------------------------------------------------------------------
-	OBJECTƒeƒNƒXƒ`ƒƒ‚ÉƒXƒvƒ‰ƒCƒg‚ð“o˜^
+	OBJECTï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÉƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½oï¿½^
 ------------------------------------------------------------------------*/
 
 static INT32 object_insert_sprite(UINT32 key)
@@ -566,7 +580,7 @@ static INT32 object_insert_sprite(UINT32 key)
 
 
 /*------------------------------------------------------------------------
-	OBJECTƒeƒNƒXƒ`ƒƒ‚©‚çˆê’èŽžŠÔ‚ðŒo‰ß‚µ‚½ƒXƒvƒ‰ƒCƒg‚ðíœ
+	OBJECTï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½èŽžï¿½Ô‚ï¿½ï¿½oï¿½ß‚ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void object_delete_sprite(void)
@@ -611,11 +625,11 @@ static void object_delete_sprite(void)
 
 
 /******************************************************************************
-	SCROLL1ƒXƒvƒ‰ƒCƒgŠÇ—
+	SCROLL1ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ç—ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	SCROLL1ƒeƒNƒXƒ`ƒƒ‚©‚çƒXƒvƒ‰ƒCƒg”Ô†‚ðŽæ“¾
+	SCROLL1ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ôï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------------------------*/
 
 static INT32 scroll1_get_sprite(UINT32 key)
@@ -642,7 +656,7 @@ static INT32 scroll1_get_sprite(UINT32 key)
 
 
 /*------------------------------------------------------------------------
-	SCROLL1ƒeƒNƒXƒ`ƒƒ‚ÉƒXƒvƒ‰ƒCƒg‚ð“o˜^
+	SCROLL1ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÉƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½oï¿½^
 ------------------------------------------------------------------------*/
 
 static INT32 scroll1_insert_sprite(UINT32 key)
@@ -676,7 +690,7 @@ static INT32 scroll1_insert_sprite(UINT32 key)
 
 
 /*------------------------------------------------------------------------
-	SCROLL1ƒeƒNƒXƒ`ƒƒ‚©‚çˆê’èŽžŠÔ‚ðŒo‰ß‚µ‚½ƒXƒvƒ‰ƒCƒg‚ðíœ
+	SCROLL1ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½èŽžï¿½Ô‚ï¿½ï¿½oï¿½ß‚ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void scroll1_delete_sprite(void)
@@ -721,11 +735,11 @@ static void scroll1_delete_sprite(void)
 
 
 /******************************************************************************
-	SCROLL2ƒXƒvƒ‰ƒCƒgŠÇ—
+	SCROLL2ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ç—ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	SCROLL2ƒeƒNƒXƒ`ƒƒ‚©‚çƒXƒvƒ‰ƒCƒg”Ô†‚ðŽæ“¾
+	SCROLL2ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ôï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------------------------*/
 
 static INT32 scroll2_get_sprite(UINT32 key)
@@ -752,7 +766,7 @@ static INT32 scroll2_get_sprite(UINT32 key)
 
 
 /*------------------------------------------------------------------------
-	SCROLL2ƒeƒNƒXƒ`ƒƒ‚ÉƒXƒvƒ‰ƒCƒg‚ð“o˜^
+	SCROLL2ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÉƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½oï¿½^
 ------------------------------------------------------------------------*/
 
 static INT32 scroll2_insert_sprite(UINT32 key)
@@ -786,7 +800,7 @@ static INT32 scroll2_insert_sprite(UINT32 key)
 
 
 /*------------------------------------------------------------------------
-	SCROLL2ƒeƒNƒXƒ`ƒƒ‚©‚çˆê’èŽžŠÔ‚ðŒo‰ß‚µ‚½ƒXƒvƒ‰ƒCƒg‚ðíœ
+	SCROLL2ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½èŽžï¿½Ô‚ï¿½ï¿½oï¿½ß‚ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void scroll2_delete_sprite(void)
@@ -831,11 +845,11 @@ static void scroll2_delete_sprite(void)
 
 
 /******************************************************************************
-	SCROLL3ƒXƒvƒ‰ƒCƒgŠÇ—
+	SCROLL3ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ç—ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	SCROLL3ƒeƒNƒXƒ`ƒƒ‚©‚çƒXƒvƒ‰ƒCƒg”Ô†‚ðŽæ“¾
+	SCROLL3ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ôï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------------------------*/
 
 static INT32 scroll3_get_sprite(UINT32 key)
@@ -862,7 +876,7 @@ static INT32 scroll3_get_sprite(UINT32 key)
 
 
 /*------------------------------------------------------------------------
-	SCROLL3ƒeƒNƒXƒ`ƒƒ‚ÉƒXƒvƒ‰ƒCƒg‚ð“o˜^
+	SCROLL3ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÉƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½oï¿½^
 ------------------------------------------------------------------------*/
 
 static INT32 scroll3_insert_sprite(UINT32 key)
@@ -896,7 +910,7 @@ static INT32 scroll3_insert_sprite(UINT32 key)
 
 
 /*------------------------------------------------------------------------
-	SCROLL3ƒeƒNƒXƒ`ƒƒ‚©‚çˆê’èŽžŠÔ‚ðŒo‰ß‚µ‚½ƒXƒvƒ‰ƒCƒg‚ðíœ
+	SCROLL3ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½èŽžï¿½Ô‚ï¿½ï¿½oï¿½ß‚ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void scroll3_delete_sprite(void)
@@ -941,11 +955,11 @@ static void scroll3_delete_sprite(void)
 
 
 /******************************************************************************
-	ƒXƒvƒ‰ƒCƒg•`‰æƒCƒ“ƒ^ƒtƒF[ƒXŠÖ”
+	ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½`ï¿½ï¿½Cï¿½ï¿½ï¿½^ï¿½tï¿½Fï¿½[ï¿½Xï¿½Öï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	‘S‚Ä‚ÌƒXƒvƒ‰ƒCƒg‚ð‘¦À‚ÉƒNƒŠƒA‚·‚é
+	ï¿½Sï¿½Ä‚ÌƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ð‘¦ï¿½ï¿½ÉƒNï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_clear_all_sprite(void)
@@ -989,7 +1003,7 @@ void blit_clear_all_sprite(void)
 
 
 /*------------------------------------------------------------------------
-	ƒXƒvƒ‰ƒCƒgˆ—‚ÌƒŠƒZƒbƒg
+	ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½ï¿½ï¿½Ìƒï¿½ï¿½Zï¿½bï¿½g
 ------------------------------------------------------------------------*/
 
 void blit_reset(void)
@@ -1020,7 +1034,7 @@ void blit_reset(void)
 
 
 /*------------------------------------------------------------------------
-	‰æ–Ê‚ÌXVŠJŽn
+	ï¿½ï¿½Ê‚ÌXï¿½Vï¿½Jï¿½n
 ------------------------------------------------------------------------*/
 
 void blit_start(int start, int end)
@@ -1044,6 +1058,12 @@ void blit_start(int start, int end)
 
 	if (start == FIRST_VISIBLE_LINE)
 	{
+#ifdef SDL2
+		// For SDL2, use software rendering - no GU setup needed
+		// Just clear the work framebuffer
+		video_clear_frame(work_frame);
+		blit_finish_object = blit_render_object;
+#else
 		if (cps2_has_mask)
 			blit_finish_object = blit_render_object_zb;
 		else
@@ -1059,12 +1079,13 @@ void blit_start(int start, int end)
 		sceGuTexFilter(GU_NEAREST, GU_NEAREST);
 		sceGuFinish();
 		sceGuSync(0, GU_SYNC_FINISH);
+#endif
 	}
 }
 
 
 /*------------------------------------------------------------------------
-	‰æ–Ê‚ÌXVI—¹
+	ï¿½ï¿½Ê‚ÌXï¿½Vï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish(void)
@@ -1092,7 +1113,7 @@ void blit_finish(void)
 
 
 /*------------------------------------------------------------------------
-	OBJECTƒeƒNƒXƒ`ƒƒ‚ÆƒLƒƒƒbƒVƒ…‚ðXV
+	OBJECTï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÆƒLï¿½ï¿½ï¿½bï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1122,11 +1143,21 @@ void blit_update_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 
 /*------------------------------------------------------------------------
-	OBJECT‚ð•`‰æƒŠƒXƒg‚É“o˜^
+	OBJECTï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 void blit_draw_object(INT16 x, INT16 y, UINT16 z, INT16 pri, UINT32 code, UINT16 attr)
 {
+#ifdef SDL2
+	// SDL2: Render sprite directly to framebuffer using software rendering
+	(void)z;  // Not used in SDL2
+	(void)pri;  // Not used in SDL2
+
+	if ((x > 48 && x < 448) && (y > object_min_y && y < clip_max_y))
+	{
+		sdl2_draw_sprite_16x16(x, y, code, attr);
+	}
+#else
 	if ((x > 48 && x < 448) && (y > object_min_y && y < clip_max_y))
 	{
 		INT16 idx;
@@ -1195,15 +1226,22 @@ void blit_draw_object(INT16 x, INT16 y, UINT16 z, INT16 pri, UINT32 code, UINT16
 
 		object_num[pri] += 2;
 	}
+#endif
 }
 
 
 /*------------------------------------------------------------------------
-	OBJECT•`‰æ
+	OBJECTï¿½`ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 static void blit_render_object(int start_pri, int end_pri)
 {
+#ifdef SDL2
+	// SDL2: Rendering already done in blit_draw_object, nothing to do here
+	(void)start_pri;
+	(void)end_pri;
+	return;
+#endif
 	int i, size = 0, total_sprites = 0;
 	UINT8 color = 0;
 	struct Vertex *vertices, *vertices_tmp;
@@ -1260,7 +1298,7 @@ static void blit_render_object(int start_pri, int end_pri)
 
 
 /*------------------------------------------------------------------------
-	OBJECT•`‰æ(Zƒoƒbƒtƒ@/ƒvƒ‰ƒCƒIƒŠƒeƒB0)
+	OBJECTï¿½`ï¿½ï¿½(Zï¿½oï¿½bï¿½tï¿½@/ï¿½vï¿½ï¿½ï¿½Cï¿½Iï¿½ï¿½ï¿½eï¿½B0)
 ------------------------------------------------------------------------*/
 
 static void blit_render_object_zb0(void)
@@ -1302,7 +1340,7 @@ static void blit_render_object_zb0(void)
 
 
 /*------------------------------------------------------------------------
-	OBJECT•`‰æ(Zƒoƒbƒtƒ@)
+	OBJECTï¿½`ï¿½ï¿½(Zï¿½oï¿½bï¿½tï¿½@)
 ------------------------------------------------------------------------*/
 
 static void blit_render_object_zb(int start_pri, int end_pri)
@@ -1373,7 +1411,7 @@ static void blit_render_object_zb(int start_pri, int end_pri)
 
 
 /*------------------------------------------------------------------------
-	SCROLL1ƒeƒNƒXƒ`ƒƒ‚ðXV
+	SCROLL1ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1400,11 +1438,16 @@ void blit_update_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 
 /*------------------------------------------------------------------------
-	SCROLL1‚ð•`‰æƒŠƒXƒg‚É“o˜^
+	SCROLL1ï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 {
+#ifdef SDL2
+	// SDL2: Render scroll1 tile directly to framebuffer
+	sdl2_draw_scroll1_8x8(x, y, code, attr);
+	return;
+#endif
 	INT16 idx;
 	struct Vertex *vertices;
 	UINT32 key = MAKE_KEY(code, attr);
@@ -1465,11 +1508,15 @@ void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 
 /*------------------------------------------------------------------------
-	SCROLL1•`‰æI—¹
+	SCROLL1ï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish_scroll1(void)
 {
+#ifdef SDL2
+	// SDL2: Rendering already done in blit_draw_scroll1
+	return;
+#endif
 	struct Vertex *vertices;
 
 	if (clut0_num + clut1_num == 0) return;
@@ -1507,7 +1554,7 @@ void blit_finish_scroll1(void)
 
 
 /*------------------------------------------------------------------------
-	SCROLL2ƒNƒŠƒbƒv”ÍˆÍ‚ðÝ’è
+	SCROLL2ï¿½Nï¿½ï¿½ï¿½bï¿½vï¿½ÍˆÍ‚ï¿½Ý’ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_set_clip_scroll2(INT16 min_y, INT16 max_y)
@@ -1523,7 +1570,7 @@ void blit_set_clip_scroll2(INT16 min_y, INT16 max_y)
 
 
 /*------------------------------------------------------------------------
-	SCROLL2‚Ì•`‰æ”ÍˆÍƒ`ƒFƒbƒN
+	SCROLL2ï¿½Ì•`ï¿½ï¿½ÍˆÍƒ`ï¿½Fï¿½bï¿½N
 ------------------------------------------------------------------------*/
 
 int blit_check_clip_scroll2(INT16 sy)
@@ -1539,7 +1586,7 @@ int blit_check_clip_scroll2(INT16 sy)
 
 
 /*------------------------------------------------------------------------
-	SCROLL2ƒeƒNƒXƒ`ƒƒ‚ðXV
+	SCROLL2ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_scroll2(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1569,7 +1616,7 @@ void blit_update_scroll2(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 
 /*------------------------------------------------------------------------
-	SCROLL2(ƒ‰ƒCƒ“ƒXƒNƒ[ƒ‹)‚ð’¼ÚVRAM‚É•`‰æ
+	SCROLL2(ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½)ï¿½ð’¼ï¿½VRAMï¿½É•`ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 static void blit_draw_scroll2_software(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1604,7 +1651,7 @@ static void blit_draw_scroll2_software(INT16 x, INT16 y, UINT32 code, UINT16 att
 
 
 /*------------------------------------------------------------------------
-	SCROLL2‚ð•`‰æƒŠƒXƒg‚É“o˜^
+	SCROLL2ï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 static void blit_draw_scroll2_hardware(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1672,11 +1719,15 @@ static void blit_draw_scroll2_hardware(INT16 x, INT16 y, UINT32 code, UINT16 att
 
 
 /*------------------------------------------------------------------------
-	SCROLL2•`‰æI—¹
+	SCROLL2ï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish_scroll2(void)
 {
+#ifdef SDL2
+	// SDL2: Rendering already done in blit_draw_scroll2 (software rendering)
+	return;
+#endif
 	struct Vertex *vertices;
 
 	if (clut0_num + clut1_num == 0) return;
@@ -1714,7 +1765,7 @@ void blit_finish_scroll2(void)
 
 
 /*------------------------------------------------------------------------
-	SCROLL3ƒeƒNƒXƒ`ƒƒ‚ðXV
+	SCROLL3ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1741,11 +1792,16 @@ void blit_update_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 
 /*------------------------------------------------------------------------
-	SCROLL3‚ð•`‰æƒŠƒXƒg‚É“o˜^
+	SCROLL3ï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 void blit_draw_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 {
+#ifdef SDL2
+	// SDL2: Render scroll3 tile directly to framebuffer
+	sdl2_draw_scroll3_32x32(x, y, code, attr);
+	return;
+#endif
 	INT16 idx;
 	struct Vertex *vertices;
 	UINT32 key = MAKE_KEY(code, attr);
@@ -1815,11 +1871,15 @@ void blit_draw_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 
 /*------------------------------------------------------------------------
-	SCROLL3•`‰æI—¹
+	SCROLL3ï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish_scroll3(void)
 {
+#ifdef SDL2
+	// SDL2: Rendering already done in blit_draw_scroll3
+	return;
+#endif
 	struct Vertex *vertices;
 
 	if (clut0_num + clut1_num == 0) return;

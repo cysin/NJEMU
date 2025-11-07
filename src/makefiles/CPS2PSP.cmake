@@ -31,6 +31,7 @@ set(CORE_SOURCES
     src/cps2/timer.c
     src/cps2/vidhrdw.c
     src/cps2/sprite.c
+    src/cps2/sprite_sdl2.c
     src/cps2/eeprom.c
     src/sound/qsound.c
 )
