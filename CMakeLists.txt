@@ -183,15 +183,29 @@ set(FONT_SOURCES
     src/psp/font/gbk_tbl.c
 )
 
-# Icon files (reuse from PSP)
-set(ICON_SOURCES
-    src/psp/icon/cps_s.c
-    src/psp/icon/cps_l.c
-    src/psp/icon/mvs_s.c
-    src/psp/icon/mvs_l.c
-    src/psp/icon/ncdz_s.c
-    src/psp/icon/ncdz_l.c
-)
+# Icon files (reuse from PSP) - select based on emulator
+if(EMU_SYSTEM STREQUAL "CPS1" OR EMU_SYSTEM STREQUAL "CPS2")
+    set(ICON_SOURCES
+        src/psp/icon/cps_s.c
+        src/psp/icon/cps_l.c
+    )
+elseif(EMU_SYSTEM STREQUAL "MVS")
+    set(ICON_SOURCES
+        src/psp/icon/mvs_s.c
+        src/psp/icon/mvs_l.c
+    )
+elseif(EMU_SYSTEM STREQUAL "NCDZ")
+    set(ICON_SOURCES
+        src/psp/icon/ncdz_s.c
+        src/psp/icon/ncdz_l.c
+    )
+else()
+    # Default to CPS
+    set(ICON_SOURCES
+        src/psp/icon/cps_s.c
+        src/psp/icon/cps_l.c
+    )
+endif()
 
 # Zlib
 set(ZLIB_SOURCES

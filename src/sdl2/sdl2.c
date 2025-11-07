@@ -19,6 +19,16 @@ int cpu_clock_setting = CPUCLOCK_DEFAULT;
 int psp_cpuclock = CPUCLOCK_DEFAULT;
 int njemu_debug = 0;
 
+// PSP GU display list (stub for SDL2)
+UINT8 gulist[GULIST_SIZE];
+
+// Screenshot directory
+char screenshotDir[MAX_PATH];
+
+// Forward declarations
+extern void file_browser(void);
+extern void ui_text_init(void);
+
 /******************************************************************************
 	Functions
 ******************************************************************************/
@@ -163,4 +173,82 @@ void *cache_alloc_state_buffer(int size)
 void cache_free_state_buffer(int size)
 {
 	// No-op on SDL2 - memory is freed normally
+}
+
+// PSP power functions (stubs for SDL2)
+int scePowerIsBatteryCharging(void)
+{
+	// Always return 1 (charging) on desktop
+	return 1;
+}
+
+int scePowerGetBatteryLifePercent(void)
+{
+	// Always return 100% battery on desktop
+	return 100;
+}
+
+// PSP display vsync (stub for SDL2)
+void sceDisplayWaitVblankStart(void)
+{
+	// No-op on SDL2 - vsync is handled by SDL_Renderer
+}
+
+
+/*------------------------------------------------------
+	SDL2 main entry point
+------------------------------------------------------*/
+
+int main(int argc, char *argv[])
+{
+	(void)argc;
+	(void)argv;
+
+	// Get current working directory
+	if (getcwd(launchDir, MAX_PATH - 1) != NULL)
+	{
+		strcat(launchDir, "/");
+	}
+	else
+	{
+		// Fallback to current directory
+		strcpy(launchDir, "./");
+	}
+
+	// Set screenshot directory
+	memset(screenshotDir, 0x00, sizeof(screenshotDir));
+#if (EMU_SYSTEM == CPS1)
+	strcpy(screenshotDir, "./screenshots/CPS1");
+#elif (EMU_SYSTEM == CPS2)
+	strcpy(screenshotDir, "./screenshots/CPS2");
+#elif (EMU_SYSTEM == MVS)
+	strcpy(screenshotDir, "./screenshots/MVS");
+#elif (EMU_SYSTEM == NCDZ)
+	strcpy(screenshotDir, "./screenshots/NCDZ");
+#endif
+
+	// Create screenshot directory (ignore errors if it exists)
+	mkdir(screenshotDir, 0777);
+
+	// Initialize SDL2
+	if (!sdl2_init())
+	{
+		fprintf(stderr, "Failed to initialize SDL2\n");
+		return 1;
+	}
+
+	// Initialize UI text
+	ui_text_init();
+
+	// Initialize video
+	video_init();
+
+	// Start file browser / emulator
+	file_browser();
+
+	// Cleanup
+	video_exit();
+	sdl2_exit();
+
+	return 0;
 }
