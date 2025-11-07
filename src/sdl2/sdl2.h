@@ -110,6 +110,15 @@ void sceRtcGetCurrentClockLocalTime(pspTime *time);
 // PSP cache functions (SDL2 stubs - no cache needed)
 void *cache_alloc_state_buffer(int size);
 void cache_free_state_buffer(int size);
+static inline void cache_init(void) {}
+static inline void cache_shutdown(void) {}
+static inline int cache_start(void) { return 0; } // Return 0 = no cache available
+
+// Cache type constants (MVS only)
+#define CACHE_INFO 0
+#define CACHE_CROM 1
+#define CACHE_SROM 2
+#define CACHE_VROM 3
 
 // PSP system button compatibility
 #define systembuttons_available 0
@@ -129,6 +138,7 @@ extern UINT8 gulist[GULIST_SIZE];
 // GU constants
 #define GU_DIRECT 0
 #define GU_SPRITES 4
+#define GU_POINTS 1
 #define GU_PSM_5551 0
 #define GU_PSM_T8 3
 #define GU_SYNC_FINISH 0
@@ -137,8 +147,21 @@ extern UINT8 gulist[GULIST_SIZE];
 #define GU_COLOR_8888 (1<<3)
 #define GU_VERTEX_16BIT (1<<7)
 #define GU_TRANSFORM_2D (1<<23)
-#define GU_ALPHA_TEST 0
-#define GU_DEPTH_TEST 1
+#define GU_ALPHA_TEST (1<<0)
+#define GU_DEPTH_TEST (1<<1)
+#define GU_SCISSOR_TEST (1<<2)
+#define GU_STENCIL_TEST (1<<3)
+#define GU_BLEND (1<<4)
+#define GU_CULL_FACE (1<<5)
+#define GU_DITHER (1<<6)
+#define GU_FOG (1<<7)
+#define GU_CLIP_PLANES (1<<8)
+#define GU_TEXTURE_2D (1<<9)
+#define GU_LIGHTING (1<<10)
+#define GU_LIGHT0 (1<<11)
+#define GU_LIGHT1 (1<<12)
+#define GU_LIGHT2 (1<<13)
+#define GU_LIGHT3 (1<<14)
 #define GU_COLOR_BUFFER_BIT 1
 #define GU_DEPTH_BUFFER_BIT 2
 #define GU_FAST_CLEAR_BIT 16
@@ -174,6 +197,11 @@ static inline void sceGuDepthMask(int mask) { (void)mask; }
 #define SWIZZLED8_8x8(tex, idx) (&tex[((idx & ~1) << 6) | ((idx & 1) << 3)])
 #define SWIZZLED8_16x16(tex, idx) (&tex[((idx & ~31) << 8) | ((idx & 31) << 7)])
 #define SWIZZLED8_32x32(tex, idx) (&tex[((idx & ~15) << 10) | ((idx & 15) << 8)])
+
+// Non-swizzled texture macros (SDL2 doesn't use swizzling)
+#define NONE_SWIZZLED_8x8(tex, idx) (&tex[(idx) << 6])
+#define NONE_SWIZZLED_16x16(tex, idx) (&tex[(idx) << 8])
+#define NONE_SWIZZLED_32x32(tex, idx) (&tex[(idx) << 10])
 
 // Global variables
 extern volatile int Loop;

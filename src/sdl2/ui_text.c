@@ -41,3 +41,9 @@ void ui_text_init(void)
 			ui_text[i] = "";
 	}
 }
+
+// Get current UI language (always English for SDL2)
+int ui_text_get_language(void)
+{
+	return 0; // 0 = English
+}
