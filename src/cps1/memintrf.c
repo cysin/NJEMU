@@ -550,6 +550,9 @@ int memory_init(void)
 {
 	int i, res;
 
+	printf("[DEBUG] memory_init: Setting up memory regions\n");
+	fflush(stdout);
+
 	memory_region_cpu1   = NULL;
 	memory_region_cpu2   = NULL;
 	memory_region_gfx1   = NULL;
@@ -564,13 +567,23 @@ int memory_init(void)
 	memory_length_user1  = 0;
 	memory_length_user2  = 0;
 
+	printf("[DEBUG] memory_init: Skipping pad_wait_clear on SDL2\n");
+	fflush(stdout);
 #ifndef SDL2
 	pad_wait_clear();
 #endif
+	printf("[DEBUG] memory_init: Calling video_clear_screen\n");
+	fflush(stdout);
 	video_clear_screen();
+	printf("[DEBUG] memory_init: Calling msg_screen_init\n");
+	fflush(stdout);
 	msg_screen_init(WP_LOGO, ICON_SYSTEM, TEXT(LOAD_ROM));
 
+	printf("[DEBUG] memory_init: Calling msg_printf CHECKING_ROM_INFO\n");
+	fflush(stdout);
 	msg_printf(TEXT(CHECKING_ROM_INFO));
+	printf("[DEBUG] memory_init: About to call load_rom_info\n");
+	fflush(stdout);
 
 	if ((res = load_rom_info(game_name)) != 0)
 	{
@@ -639,11 +652,21 @@ int memory_init(void)
 
 	set_cpu_clock(psp_cpuclock);
 
-	if (load_rom_cpu1() == 0) return 0;
-	if (load_rom_cpu2() == 0) return 0;
-	if (load_rom_gfx1() == 0) return 0;
-	if (load_rom_sound1() == 0) return 0;
-	if (load_rom_user1() == 0) return 0;
+	printf("[DEBUG] memory_init: Loading ROM CPU1\n");
+	fflush(stdout);
+	if (load_rom_cpu1() == 0) { printf("[DEBUG] load_rom_cpu1 FAILED\n"); fflush(stdout); return 0; }
+	printf("[DEBUG] memory_init: Loading ROM CPU2\n");
+	fflush(stdout);
+	if (load_rom_cpu2() == 0) { printf("[DEBUG] load_rom_cpu2 FAILED\n"); fflush(stdout); return 0; }
+	printf("[DEBUG] memory_init: Loading ROM GFX1\n");
+	fflush(stdout);
+	if (load_rom_gfx1() == 0) { printf("[DEBUG] load_rom_gfx1 FAILED\n"); fflush(stdout); return 0; }
+	printf("[DEBUG] memory_init: Loading ROM SOUND1\n");
+	fflush(stdout);
+	if (load_rom_sound1() == 0) { printf("[DEBUG] load_rom_sound1 FAILED\n"); fflush(stdout); return 0; }
+	printf("[DEBUG] memory_init: Loading ROM USER1\n");
+	fflush(stdout);
+	if (load_rom_user1() == 0) { printf("[DEBUG] load_rom_user1 FAILED\n"); fflush(stdout); return 0; }
 
 	static_ram1 = (UINT8 *)cps1_ram - 0xff0000;
 	static_ram2 = (UINT8 *)cps1_gfxram - 0x900000;
