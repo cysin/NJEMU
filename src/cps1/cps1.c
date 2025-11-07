@@ -2,7 +2,7 @@
 
 	cps1.c
 
-	CPS1¥¨¥ß¥å¥ì©`¥·¥ç¥ó¥³¥¢
+	CPS1ï¿½ï¿½ï¿½ß¥ï¿½ï¿½`ï¿½ï¿½ï¿½ï¿½ó¥³¥ï¿½
 
 ******************************************************************************/
 
@@ -10,17 +10,26 @@
 
 
 /******************************************************************************
-	¥í©`¥«¥ëévÊý
+	ï¿½ï¿½ï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½vï¿½ï¿½
 ******************************************************************************/
 
 /*--------------------------------------------------------
-	CPS1¥¨¥ß¥å¥ì©`¥·¥ç¥ó³õÆÚ»¯
+	CPS1ï¿½ï¿½ï¿½ß¥ï¿½ï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú»ï¿½
 --------------------------------------------------------*/
 
 static int cps1_init(void)
 {
+	printf("[DEBUG] cps1_init: Starting cps1_driver_init()\n");
+	fflush(stdout);
 	if (!cps1_driver_init())
+	{
+		printf("[DEBUG] cps1_init: cps1_driver_init() FAILED\n");
+		fflush(stdout);
 		return 0;
+	}
+
+	printf("[DEBUG] cps1_init: cps1_driver_init() OK\n");
+	fflush(stdout);
 
 	msg_printf(TEXT(DONE2));
 	msg_screen_clear();
@@ -28,8 +37,14 @@ static int cps1_init(void)
 	video_clear_screen();
 
 #ifdef ADHOC
+	printf("[DEBUG] cps1_init: Starting cps1_video_init()\n");
+	fflush(stdout);
 	if (!cps1_video_init())
+	{
+		printf("[DEBUG] cps1_init: cps1_video_init() FAILED\n");
+		fflush(stdout);
 		return 0;
+	}
 
 	if (adhoc_enable)
 	{
@@ -62,15 +77,22 @@ static int cps1_init(void)
 		return 0;
 	}
 
+	printf("[DEBUG] cps1_init: Completed successfully\n");
+	fflush(stdout);
 	return 1;
 #else
-	return cps1_video_init();
+	printf("[DEBUG] cps1_init: Starting cps1_video_init()\n");
+	fflush(stdout);
+	int result = cps1_video_init();
+	printf("[DEBUG] cps1_init: cps1_video_init() returned %d\n", result);
+	fflush(stdout);
+	return result;
 #endif
 }
 
 
 /*--------------------------------------------------------
-	CPS1¥¨¥ß¥å¥ì©`¥·¥ç¥ó¥ê¥»¥Ã¥È
+	CPS1ï¿½ï¿½ï¿½ß¥ï¿½ï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ê¥»ï¿½Ã¥ï¿½
 --------------------------------------------------------*/
 
 static void cps1_reset(void)
@@ -93,7 +115,7 @@ static void cps1_reset(void)
 }
 
 /*--------------------------------------------------------
-	CPS¥¨¥ß¥å¥ì©`¥·¥ç¥ó½KÁË
+	CPSï¿½ï¿½ï¿½ß¥ï¿½ï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Kï¿½ï¿½
 --------------------------------------------------------*/
 
 static void cps1_exit(void)
@@ -171,15 +193,23 @@ static void apply_cheat()
 }
 
 /*--------------------------------------------------------
-	CPS1¥¨¥ß¥å¥ì©`¥·¥ç¥óŒgÐÐ
+	CPS1ï¿½ï¿½ï¿½ß¥ï¿½ï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½
 --------------------------------------------------------*/
 
 static void cps1_run(void)
 {
+	printf("[DEBUG] cps1_run: Entered main loop\n");
+	fflush(stdout);
+
 	while (Loop >= LOOP_RESET)
 	{
+		printf("[DEBUG] cps1_run: Calling cps1_reset()\n");
+		fflush(stdout);
 		cps1_reset();
+		printf("[DEBUG] cps1_run: cps1_reset() complete, entering LOOP_EXEC\n");
+		fflush(stdout);
 
+		int frame_count = 0;
 		while (Loop == LOOP_EXEC)
 		{
 			if (Sleep)
@@ -191,25 +221,37 @@ static void cps1_run(void)
 
 				autoframeskip_reset();
 			}
-			
+
 			apply_cheat(); //davex cheat
 			timer_update_cpu();
 			update_screen();
 			update_inputport();
+
+			frame_count++;
+			if (frame_count == 1 || frame_count == 60 || (frame_count % 300 == 0))
+			{
+				printf("[DEBUG] cps1_run: Frame %d\n", frame_count);
+				fflush(stdout);
+			}
 		}
 
+		printf("[DEBUG] cps1_run: Exited LOOP_EXEC, Loop=%d\n", Loop);
+		fflush(stdout);
 		video_clear_screen();
 		sound_mute(1);
 	}
+
+	printf("[DEBUG] cps1_run: Exited main loop\n");
+	fflush(stdout);
 }
 
 
 /******************************************************************************
-	¥°¥í©`¥Ð¥ëévÊý
+	ï¿½ï¿½ï¿½ï¿½ï¿½`ï¿½Ð¥ï¿½ï¿½vï¿½ï¿½
 ******************************************************************************/
 
 /*--------------------------------------------------------
-	CPS1¥¨¥ß¥å¥ì©`¥·¥ç¥ó¥á¥¤¥ó
+	CPS1ï¿½ï¿½ï¿½ß¥ï¿½ï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½á¥¤ï¿½ï¿½
 --------------------------------------------------------*/
 
 void cps1_main(void)
@@ -226,15 +268,32 @@ void cps1_main(void)
 
 		video_clear_screen();
 
+		printf("[DEBUG] Starting memory_init()\n");
+		fflush(stdout);
 		if (memory_init())
 		{
+			printf("[DEBUG] memory_init() OK, starting sound_init()\n");
+			fflush(stdout);
 			if (sound_init())
 			{
+				printf("[DEBUG] sound_init() OK, starting input_init()\n");
+				fflush(stdout);
 				if (input_init())
 				{
+					printf("[DEBUG] input_init() OK, starting cps1_init()\n");
+					fflush(stdout);
 					if (cps1_init())
 					{
+						printf("[DEBUG] cps1_init() OK, starting cps1_run()\n");
+						fflush(stdout);
 						cps1_run();
+						printf("[DEBUG] cps1_run() exited\n");
+						fflush(stdout);
+					}
+					else
+					{
+						printf("[DEBUG] cps1_init() FAILED\n");
+						fflush(stdout);
 					}
 					cps1_exit();
 				}
