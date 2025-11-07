@@ -2,7 +2,7 @@
 
 	timer.c
 
-	ƒ^ƒCƒ}[ŠÇ—
+	ï¿½^ï¿½Cï¿½}ï¿½[ï¿½Ç—ï¿½
 
 ******************************************************************************/
 
@@ -13,11 +13,11 @@
 
 
 /******************************************************************************
-	ƒ}ƒNƒ
+	ï¿½}ï¿½Nï¿½ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------
-	CPU‚ÌÁ”ï‚µ‚½ŠÔ‚ğæ“¾ (’PˆÊ:ƒ}ƒCƒNƒ•b)
+	CPUï¿½Ìï¿½ï¿½ï‚µï¿½ï¿½ï¿½ï¿½ï¿½Ô‚ï¿½ï¿½æ“¾ (ï¿½Pï¿½ï¿½:ï¿½}ï¿½Cï¿½Nï¿½ï¿½ï¿½b)
 ------------------------------------------------------*/
 
 #define cpu_elapsed_time(cpunum)	\
@@ -25,7 +25,7 @@
 
 
 /******************************************************************************
-	ƒ[ƒJƒ‹\‘¢‘Ì
+	ï¿½ï¿½ï¿½[ï¿½Jï¿½ï¿½ï¿½\ï¿½ï¿½ï¿½ï¿½
 ******************************************************************************/
 
 typedef struct timer_t
@@ -52,7 +52,7 @@ static CPUINFO cpu[MAX_CPU];
 
 
 /******************************************************************************
-	ƒ[ƒJƒ‹•Ï”
+	ï¿½ï¿½ï¿½[ï¿½Jï¿½ï¿½ï¿½Ïï¿½
 ******************************************************************************/
 
 static float time_slice;
@@ -65,11 +65,11 @@ static UINT32 current_frame;
 
 
 /******************************************************************************
-	ƒ[ƒJƒ‹ŠÖ”
+	ï¿½ï¿½ï¿½[ï¿½Jï¿½ï¿½ï¿½Öï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------
-	CPU‚ğÀs
+	CPUï¿½ï¿½ï¿½ï¿½ï¿½s
 ------------------------------------------------------*/
 
 static void cpu_execute(int cpunum)
@@ -85,7 +85,7 @@ static void cpu_execute(int cpunum)
 
 
 /*------------------------------------------------------
-	CPU‚ÌƒXƒsƒ“‚ğ‰ğœ(ƒgƒŠƒK)
+	CPUï¿½ÌƒXï¿½sï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½gï¿½ï¿½ï¿½K)
 ------------------------------------------------------*/
 
 static void cpu_spin_trigger(int param)
@@ -95,7 +95,7 @@ static void cpu_spin_trigger(int param)
 
 
 /*------------------------------------------------------
-	Œ»İ‚Ì•bˆÈ‰º‚ÌŠÔ‚ğæ“¾ (’PˆÊ:ƒ}ƒCƒNƒ•b)
+	ï¿½ï¿½ï¿½İ‚Ì•bï¿½È‰ï¿½ï¿½Ìï¿½ï¿½Ô‚ï¿½ï¿½æ“¾ (ï¿½Pï¿½ï¿½:ï¿½}ï¿½Cï¿½Nï¿½ï¿½ï¿½b)
 ------------------------------------------------------*/
 
 static float getabsolutetime(void)
@@ -110,7 +110,7 @@ static float getabsolutetime(void)
 
 
 /*------------------------------------------------------
-	•`‰æŠ„‚è‚İ
+	ï¿½`ï¿½æŠ„ï¿½èï¿½ï¿½
 ------------------------------------------------------*/
 
 static void timer_set_vblank_interrupt(void)
@@ -120,7 +120,7 @@ static void timer_set_vblank_interrupt(void)
 
 
 /*------------------------------------------------------
-	ƒTƒEƒ“ƒhŠ„‚è‚İ
+	ï¿½Tï¿½Eï¿½ï¿½ï¿½hï¿½ï¿½ï¿½èï¿½ï¿½
 ------------------------------------------------------*/
 
 static TIMER_CALLBACK( qsound_interrupt )
@@ -131,11 +131,11 @@ static TIMER_CALLBACK( qsound_interrupt )
 
 
 /******************************************************************************
-	ƒOƒ[ƒoƒ‹ŠÖ”
+	ï¿½Oï¿½ï¿½ï¿½[ï¿½oï¿½ï¿½ï¿½Öï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------
-	ƒ^ƒCƒ}[‚ğƒŠƒZƒbƒg
+	ï¿½^ï¿½Cï¿½}ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½Zï¿½bï¿½g
 ------------------------------------------------------*/
 
 void timer_reset(void)
@@ -173,7 +173,7 @@ void timer_reset(void)
 
 
 /*------------------------------------------------------
-	CPU‚ğƒTƒXƒyƒ“ƒh‚·‚é
+	CPUï¿½ï¿½ï¿½Tï¿½Xï¿½yï¿½ï¿½ï¿½hï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------*/
 
 void timer_suspend_cpu(int cpunum, int state, int reason)
@@ -186,7 +186,7 @@ void timer_suspend_cpu(int cpunum, int state, int reason)
 
 
 /*------------------------------------------------------
-	CPU‚ğƒŠƒZƒbƒg‚·‚é
+	CPUï¿½ï¿½ï¿½ï¿½ï¿½Zï¿½bï¿½gï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------*/
 
 void timer_set_resetline(int cpunum, int state)
@@ -199,7 +199,7 @@ void timer_set_resetline(int cpunum, int state)
 
 
 /*------------------------------------------------------
-	CPU‚ÌƒTƒXƒyƒ“ƒh‚Ìó‘Ô‚ğæ“¾
+	CPUï¿½ÌƒTï¿½Xï¿½yï¿½ï¿½ï¿½hï¿½Ìï¿½Ô‚ï¿½ï¿½æ“¾
 ------------------------------------------------------*/
 
 int timer_get_cpu_status(int cpunum)
@@ -209,7 +209,7 @@ int timer_get_cpu_status(int cpunum)
 
 
 /*------------------------------------------------------
-	ƒ^ƒCƒ}[‚ğ—LŒø/–³Œø‚É‚·‚é
+	ï¿½^ï¿½Cï¿½}ï¿½[ï¿½ï¿½Lï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½É‚ï¿½ï¿½ï¿½
 ------------------------------------------------------*/
 
 int timer_enable(int which, int enable)
@@ -222,7 +222,7 @@ int timer_enable(int which, int enable)
 
 
 /*------------------------------------------------------
-	ƒ^ƒCƒ}[‚ğƒZƒbƒg
+	ï¿½^ï¿½Cï¿½}ï¿½[ï¿½ï¿½ï¿½Zï¿½bï¿½g
 ------------------------------------------------------*/
 
 void timer_adjust(int which, float duration, int param, void (*callback)(int param))
@@ -235,7 +235,7 @@ void timer_adjust(int which, float duration, int param, void (*callback)(int par
 
 	if (active_cpu != CPU_NOTACTIVE)
 	{
-		// CPUÀs’†‚Ìê‡‚ÍAc‚èƒTƒCƒNƒ‹‚ğ”jŠü
+		// CPUï¿½ï¿½ï¿½sï¿½ï¿½ï¿½Ìê‡ï¿½ÍAï¿½cï¿½ï¿½Tï¿½Cï¿½Nï¿½ï¿½ï¿½ï¿½jï¿½ï¿½
 		int cycles_left = *cpu[active_cpu].icount;
 		float time_left = cycles_left * cpu[active_cpu].cycles_to_usec;
 
@@ -247,7 +247,7 @@ void timer_adjust(int which, float duration, int param, void (*callback)(int par
 
 			if (active_cpu == CPU_Z80)
 			{
-				// CPU2‚Ìê‡‚ÍCPU1‚ğ’â~‚µCPU1‚ªÁ”ï‚µ‚½—]•ª‚ÈƒTƒCƒNƒ‹‚ğ’²®‚·‚é
+				// CPU2ï¿½Ìê‡ï¿½ï¿½CPU1ï¿½ï¿½ï¿½~ï¿½ï¿½CPU1ï¿½ï¿½ï¿½ï¿½ï¿½ï‚µï¿½ï¿½ï¿½]ï¿½ï¿½ï¿½ÈƒTï¿½Cï¿½Nï¿½ï¿½ï¿½ğ’²ï¿½ï¿½ï¿½ï¿½ï¿½
 				if (!timer[CPU1_SPIN_TIMER].enable)
 				{
 					timer_suspend_cpu(CPU_M68000, 0, SUSPEND_REASON_SPIN);
@@ -263,7 +263,7 @@ void timer_adjust(int which, float duration, int param, void (*callback)(int par
 
 
 /*------------------------------------------------------
-	ƒ^ƒCƒ}[‚ğƒZƒbƒg
+	ï¿½^ï¿½Cï¿½}ï¿½[ï¿½ï¿½ï¿½Zï¿½bï¿½g
 ------------------------------------------------------*/
 
 void timer_set(int which, float duration, int param, void (*callback)(int param))
@@ -274,7 +274,7 @@ void timer_set(int which, float duration, int param, void (*callback)(int param)
 
 
 /*------------------------------------------------------
-	Œ»İ‚ÌƒtƒŒ[ƒ€‚ğæ“¾
+	ï¿½ï¿½ï¿½İ‚Ìƒtï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------*/
 
 UINT32 timer_get_currentframe(void)
@@ -284,19 +284,33 @@ UINT32 timer_get_currentframe(void)
 
 
 /*------------------------------------------------------
-	CPU‚ğXV
+	CPUï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------*/
 
 void timer_update_cpu(void)
 {
 	int i;
 	float time;
+	static int first_call = 1;
+
+	if (first_call)
+	{
+		printf("[DEBUG] timer_update_cpu: First call\n");
+		fflush(stdout);
+	}
 
 	frame_base = 0;
 	timer_left = time_slice;
 
 	timer_set_vblank_interrupt();
 
+	if (first_call)
+	{
+		printf("[DEBUG] timer_update_cpu: Entering main loop, timer_left=%f\n", timer_left);
+		fflush(stdout);
+	}
+
+	int loop_count = 0;
 	while (timer_left > 0)
 	{
 		timer_ticks = timer_left;
@@ -319,11 +333,44 @@ void timer_update_cpu(void)
 			}
 		}
 
+		if (first_call)
+		{
+			printf("[DEBUG] timer_update_cpu: About to execute CPUs, loop_count=%d\n", loop_count);
+			fflush(stdout);
+		}
+
 		for (i = 0; i < MAX_CPU; i++)
+		{
+			if (first_call)
+			{
+				printf("[DEBUG] timer_update_cpu: Executing CPU %d\n", i);
+				fflush(stdout);
+			}
 			cpu_execute(i);
+			if (first_call)
+			{
+				printf("[DEBUG] timer_update_cpu: CPU %d execute done\n", i);
+				fflush(stdout);
+			}
+		}
 
 		frame_base += timer_ticks;
 		timer_left -= timer_ticks;
+		loop_count++;
+
+		if (first_call && loop_count > 10)
+		{
+			printf("[DEBUG] timer_update_cpu: Loop count exceeded 10, breaking debug mode\n");
+			fflush(stdout);
+			first_call = 0;
+		}
+	}
+
+	if (first_call)
+	{
+		printf("[DEBUG] timer_update_cpu: Exited main loop, updating base_time\n");
+		fflush(stdout);
+		first_call = 0;
 	}
 
 	base_time += time_slice;
@@ -343,7 +390,7 @@ void timer_update_cpu(void)
 
 
 /******************************************************************************
-	ƒZ[ƒu/ƒ[ƒh ƒXƒe[ƒg
+	ï¿½Zï¿½[ï¿½u/ï¿½ï¿½ï¿½[ï¿½h ï¿½Xï¿½eï¿½[ï¿½g
 ******************************************************************************/
 
 #ifdef SAVE_STATE

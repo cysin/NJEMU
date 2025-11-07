@@ -207,13 +207,22 @@ static void cps1_run(void)
 		fflush(stdout);
 		cps1_reset();
 		printf("[DEBUG] cps1_run: cps1_reset() complete, entering LOOP_EXEC\n");
+		printf("[DEBUG] cps1_run: Sleep=%d, Loop=%d\n", Sleep, Loop);
 		fflush(stdout);
 
 		int frame_count = 0;
 		while (Loop == LOOP_EXEC)
 		{
+			if (frame_count == 0)
+			{
+				printf("[DEBUG] cps1_run: First iteration - Sleep=%d, Loop=%d\n", Sleep, Loop);
+				fflush(stdout);
+			}
+
 			if (Sleep)
 			{
+				printf("[DEBUG] cps1_run: Sleep is set, entering sleep loop\n");
+				fflush(stdout);
 				do
 				{
 					sceKernelDelayThread(5000000);
@@ -222,9 +231,32 @@ static void cps1_run(void)
 				autoframeskip_reset();
 			}
 
+			if (frame_count == 0)
+			{
+				printf("[DEBUG] cps1_run: Calling apply_cheat()\n");
+				fflush(stdout);
+			}
 			apply_cheat(); //davex cheat
+
+			if (frame_count == 0)
+			{
+				printf("[DEBUG] cps1_run: Calling timer_update_cpu()\n");
+				fflush(stdout);
+			}
 			timer_update_cpu();
+
+			if (frame_count == 0)
+			{
+				printf("[DEBUG] cps1_run: Calling update_screen()\n");
+				fflush(stdout);
+			}
 			update_screen();
+
+			if (frame_count == 0)
+			{
+				printf("[DEBUG] cps1_run: Calling update_inputport()\n");
+				fflush(stdout);
+			}
 			update_inputport();
 
 			frame_count++;

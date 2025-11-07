@@ -196,8 +196,11 @@ int sound_thread_start(void)
 	sdl_audio_device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
 	if (!sdl_audio_device)
 	{
-		fprintf(stderr, "Failed to open audio device: %s\n", SDL_GetError());
-		return 0;
+		fprintf(stderr, "Warning: Failed to open audio device: %s\n", SDL_GetError());
+		fprintf(stderr, "Continuing without audio...\n");
+		// Don't fail - allow emulator to run without audio
+		sound_active = 0;
+		return 1;
 	}
 
 	printf("Audio opened: %d Hz, %d channels, %d samples\n",
@@ -208,11 +211,13 @@ int sound_thread_start(void)
 	sound_thread = SDL_CreateThread(sound_update_thread, "Sound thread", NULL);
 	if (!sound_thread)
 	{
-		fprintf(stderr, "Failed to create sound thread: %s\n", SDL_GetError());
+		fprintf(stderr, "Warning: Failed to create sound thread: %s\n", SDL_GetError());
+		fprintf(stderr, "Continuing without audio...\n");
 		SDL_CloseAudioDevice(sdl_audio_device);
 		sdl_audio_device = 0;
 		sound_active = 0;
-		return 0;
+		// Don't fail - allow emulator to run without audio
+		return 1;
 	}
 
 	// Start audio playback
