@@ -335,6 +335,9 @@ void file_browser(void)
 		// Set game name for emulator
 		extract_game_name(rom_list[selection].name, game_name);
 
+		// Set game directory for ROM loading
+		strcpy(game_dir, roms_dir);
+
 		printf("\n");
 		printf("========================================\n");
 		printf("Starting emulation: %s\n", rom_list[selection].display_name);

@@ -111,26 +111,49 @@ static int load_rom_cpu1(void)
 	int i, res;
 	char fname[32], *parent;
 
+	printf("[DEBUG] load_rom_cpu1: Allocating %d bytes\n", memory_length_cpu1);
+	fflush(stdout);
 	if ((memory_region_cpu1 = memalign(MEM_ALIGN, memory_length_cpu1)) == NULL)
 	{
+		printf("[DEBUG] load_rom_cpu1: Memory allocation FAILED\n");
+		fflush(stdout);
 		error_memory("REGION_CPU1");
 		return 0;
 	}
 	memset(memory_region_cpu1, 0, memory_length_cpu1);
 
 	parent = strlen(parent_name) ? parent_name : NULL;
+	printf("[DEBUG] load_rom_cpu1: game_name='%s', parent='%s', num_cpu1rom=%d\n",
+	       game_name, parent ? parent : "(none)", num_cpu1rom);
+	fflush(stdout);
 
 	for (i = 0; i < num_cpu1rom; )
 	{
 		strcpy(fname, cpu1rom[i].name);
+		printf("[DEBUG] load_rom_cpu1: Opening ROM file '%s' (CRC: 0x%08x)\n",
+		       fname, cpu1rom[i].crc);
+		fflush(stdout);
 		if ((res = file_open(game_name, parent, cpu1rom[i].crc, fname)) < 0)
 		{
+			printf("[DEBUG] load_rom_cpu1: file_open() returned %d\n", res);
+			fflush(stdout);
 			if (res == -2)
+			{
+				printf("[DEBUG] load_rom_cpu1: CRC mismatch for '%s'\n", fname);
+				fflush(stdout);
 				error_crc(fname);
+			}
 			else
+			{
+				printf("[DEBUG] load_rom_cpu1: File not found '%s'\n", fname);
+				fflush(stdout);
 				error_file(fname);
+			}
 			return 0;
 		}
+
+		printf("[DEBUG] load_rom_cpu1: file_open() succeeded, loading ROM data\n");
+		fflush(stdout);
 
 		msg_printf(TEXT(LOADING), fname);
 
@@ -139,6 +162,8 @@ static int load_rom_cpu1(void)
 		file_close();
 	}
 
+	printf("[DEBUG] load_rom_cpu1: All CPU1 ROMs loaded successfully\n");
+	fflush(stdout);
 	return 1;
 }
 

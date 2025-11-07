@@ -2,7 +2,7 @@
 
 	loadrom.c
 
-	ROMƒCƒ[ƒWƒtƒ@ƒCƒ‹ƒ[ƒhŠÖ”
+	ROMï¿½Cï¿½ï¿½ï¿½[ï¿½Wï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½hï¿½Öï¿½
 
 ******************************************************************************/
 
@@ -13,18 +13,18 @@
 #if (EMU_SYSTEM != NCDZ)
 
 /******************************************************************************
-	ƒ[ƒJƒ‹•Ï”
+	ï¿½ï¿½ï¿½[ï¿½Jï¿½ï¿½ï¿½Ïï¿½
 ******************************************************************************/
 
 static int rom_fd = -1;
 
 
 /******************************************************************************
-	ROMƒtƒ@ƒCƒ‹“Ç‚İ‚İ
+	ROMï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Ç‚İï¿½ï¿½ï¿½
 ******************************************************************************/
 
 /*--------------------------------------------------------
-	ZIPƒtƒ@ƒCƒ‹‚©‚çƒtƒ@ƒCƒ‹‚ğŒŸõ‚µŠJ‚­
+	ZIPï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Jï¿½ï¿½
 --------------------------------------------------------*/
 
 int file_open(const char *fname1, const char *fname2, const UINT32 crc, char *fname)
@@ -32,6 +32,11 @@ int file_open(const char *fname1, const char *fname2, const UINT32 crc, char *fn
 	int i, found = 0;
 	struct zip_find_t file;
 	char path[MAX_PATH];
+
+	printf("[DEBUG] file_open: fname1='%s', fname2='%s', crc=0x%08x, fname='%s'\n",
+	       fname1, fname2 ? fname2 : "(null)", crc, fname ? fname : "(null)");
+	printf("[DEBUG] file_open: game_dir='%s', launchDir='%s'\n", game_dir, launchDir);
+	fflush(stdout);
 
 	for (i = 0; i < 3; i++)
 	{
@@ -42,28 +47,52 @@ int file_open(const char *fname1, const char *fname2, const UINT32 crc, char *fn
 		case 2: sprintf(path, "%sroms/%s.zip", launchDir, fname2); break;
 		}
 
+		printf("[DEBUG] file_open: Trying path #%d: '%s'\n", i, path);
+		fflush(stdout);
+
 		if (zip_open(path) != -1)
 		{
+			printf("[DEBUG] file_open: zip_open succeeded\n");
+			fflush(stdout);
 			if (zip_findfirst(&file))
 			{
+				printf("[DEBUG] file_open: First file: '%s' CRC=0x%08x\n", file.name, file.crc32);
+				fflush(stdout);
 				if (file.crc32 == crc)
 				{
+					printf("[DEBUG] file_open: CRC MATCH on first file!\n");
+					fflush(stdout);
 					found = 1;
 				}
 				else
 				{
 					if (!found)
 					{
+						int count = 1;
 						while (zip_findnext(&file))
 						{
+							count++;
+							printf("[DEBUG] file_open: File #%d: '%s' CRC=0x%08x\n", count, file.name, file.crc32);
+							fflush(stdout);
 							if (file.crc32 == crc)
 							{
+								printf("[DEBUG] file_open: CRC MATCH found!\n");
+								fflush(stdout);
 								found = 1;
 								break;
 							}
 						}
+						if (!found) {
+							printf("[DEBUG] file_open: No CRC match after checking %d files\n", count);
+							fflush(stdout);
+						}
 					}
 				}
+			}
+			else
+			{
+				printf("[DEBUG] file_open: zip_findfirst returned FALSE (empty ZIP?)\n");
+				fflush(stdout);
 			}
 
 			if (!found)
@@ -101,7 +130,7 @@ int file_open(const char *fname1, const char *fname2, const UINT32 crc, char *fn
 
 
 /*--------------------------------------------------------
-	ƒtƒ@ƒCƒ‹‚ğ•Â‚¶‚é
+	ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½Â‚ï¿½ï¿½ï¿½
 --------------------------------------------------------*/
 
 void file_close(void)
@@ -116,7 +145,7 @@ void file_close(void)
 
 
 /*--------------------------------------------------------
-	ƒtƒ@ƒCƒ‹‚©‚çw’èƒoƒCƒg“Ç‚İ‚Ş
+	ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½wï¿½ï¿½oï¿½Cï¿½gï¿½Ç‚İï¿½ï¿½ï¿½
 --------------------------------------------------------*/
 
 int file_read(void *buf, size_t length)
@@ -128,7 +157,7 @@ int file_read(void *buf, size_t length)
 
 
 /*--------------------------------------------------------
-	ƒtƒ@ƒCƒ‹‚©‚ç1•¶š“Ç‚İ‚Ş
+	ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1ï¿½ï¿½ï¿½ï¿½ï¿½Ç‚İï¿½ï¿½ï¿½
 --------------------------------------------------------*/
 
 int file_getc(void)
@@ -140,7 +169,7 @@ int file_getc(void)
 
 
 /*--------------------------------------------------------
-	ƒLƒƒƒbƒVƒ…ƒtƒ@ƒCƒ‹‚ğŠJ‚­
+	ï¿½Lï¿½ï¿½ï¿½bï¿½Vï¿½ï¿½ï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½ï¿½ï¿½Jï¿½ï¿½
 --------------------------------------------------------*/
 
 #if USE_CACHE && (EMU_SYSTEM == MVS)
@@ -210,7 +239,7 @@ int cachefile_open(int type)
 
 
 /*--------------------------------------------------------
-	ROM‚ğƒ[ƒh‚·‚é
+	ROMï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½hï¿½ï¿½ï¿½ï¿½
 --------------------------------------------------------*/
 
 int rom_load(struct rom_t *rom, UINT8 *mem, int idx, int max)
@@ -276,11 +305,11 @@ _continue:
 
 
 /******************************************************************************
-	ƒGƒ‰[ƒƒbƒZ[ƒW•\¦
+	ï¿½Gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½bï¿½Zï¿½[ï¿½Wï¿½\ï¿½ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------
-	ƒƒ‚ƒŠŠm•ÛƒGƒ‰[ƒƒbƒZ[ƒW•\¦
+	ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½mï¿½ÛƒGï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½bï¿½Zï¿½[ï¿½Wï¿½\ï¿½ï¿½
 ------------------------------------------------------*/
 
 void error_memory(const char *mem_name)
@@ -294,7 +323,7 @@ void error_memory(const char *mem_name)
 
 
 /*------------------------------------------------------
-	CRCƒGƒ‰[ƒƒbƒZ[ƒW•\¦
+	CRCï¿½Gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½bï¿½Zï¿½[ï¿½Wï¿½\ï¿½ï¿½
 ------------------------------------------------------*/
 
 void error_crc(const char *rom_name)
@@ -308,7 +337,7 @@ void error_crc(const char *rom_name)
 
 
 /*------------------------------------------------------
-	ROMƒtƒ@ƒCƒ‹ƒGƒ‰[ƒƒbƒZ[ƒW•\¦
+	ROMï¿½tï¿½@ï¿½Cï¿½ï¿½ï¿½Gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½bï¿½Zï¿½[ï¿½Wï¿½\ï¿½ï¿½
 ------------------------------------------------------*/
 
 void error_file(const char *rom_name)
