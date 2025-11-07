@@ -77,6 +77,18 @@ void pad_init(void)
 UINT32 poll_gamepad(void)
 {
 	UINT32 buttons = 0;
+	SDL_Event event;
+
+	// Pump SDL events to update keyboard/controller state
+	// This is critical - without it, SDL_GetKeyboardState() won't work
+	while (SDL_PollEvent(&event))
+	{
+		if (event.type == SDL_QUIT)
+		{
+			Loop = LOOP_EXIT;
+		}
+	}
+
 	const Uint8 *keystate = SDL_GetKeyboardState(NULL);
 
 	// Keyboard mapping
