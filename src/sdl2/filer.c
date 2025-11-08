@@ -301,8 +301,10 @@ void file_browser(void)
 	printf("\n");
 
 	// Set up ROMs directory
-	snprintf(roms_dir, MAX_PATH, "%s/roms", launchDir);
-	strcpy(startupDir, roms_dir);
+    snprintf(roms_dir, MAX_PATH, "%s/roms", launchDir);
+    // Ensure bounded copy into startupDir
+    strncpy(startupDir, roms_dir, sizeof(startupDir) - 1);
+    startupDir[sizeof(startupDir) - 1] = '\0';
 
 	// Create roms directory if it doesn't exist
 	mkdir(roms_dir, 0755);
@@ -335,8 +337,9 @@ void file_browser(void)
 		// Set game name for emulator
 		extract_game_name(rom_list[selection].name, game_name);
 
-		// Set game directory for ROM loading
-		strcpy(game_dir, roms_dir);
+        // Set game directory for ROM loading (bounded copy)
+        strncpy(game_dir, roms_dir, MAX_PATH - 1);
+        game_dir[MAX_PATH - 1] = '\0';
 
 		printf("\n");
 		printf("========================================\n");

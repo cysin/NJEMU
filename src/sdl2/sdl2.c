@@ -67,20 +67,30 @@ int sdl2_init(void)
 		return 0;
 	}
 
-	// Set up launch directory
-	char *base_path = SDL_GetBasePath();
-	if (base_path)
-	{
-		strncpy(launchDir, base_path, MAX_PATH - 1);
-		launchDir[MAX_PATH - 1] = '\0';
-		SDL_free(base_path);
-	}
-	else
-	{
-		// Fallback to current directory
-		getcwd(launchDir, MAX_PATH);
-		strcat(launchDir, "/");
-	}
+    // Set up launch directory
+    char *base_path = SDL_GetBasePath();
+    if (base_path)
+    {
+        strncpy(launchDir, base_path, MAX_PATH - 1);
+        launchDir[MAX_PATH - 1] = '\0';
+        SDL_free(base_path);
+    }
+    else
+    {
+        // Fallback to current directory (avoid overflow when appending '/')
+        if (getcwd(launchDir, MAX_PATH - 1) == NULL)
+        {
+            // As a last resort, use current directory string
+            strncpy(launchDir, "./", MAX_PATH - 1);
+            launchDir[MAX_PATH - 1] = '\0';
+        }
+        size_t len = strlen(launchDir);
+        if (len > 0 && len < (size_t)MAX_PATH - 1 && launchDir[len - 1] != '/')
+        {
+            launchDir[len] = '/';
+            launchDir[len + 1] = '\0';
+        }
+    }
 
 	printf("Launch directory: %s\n", launchDir);
 
@@ -201,19 +211,25 @@ void sceDisplayWaitVblankStart(void)
 
 int main(int argc, char *argv[])
 {
-	(void)argc;
-	(void)argv;
+    (void)argc;
+    (void)argv;
 
-	// Get current working directory
-	if (getcwd(launchDir, MAX_PATH - 1) != NULL)
-	{
-		strcat(launchDir, "/");
-	}
-	else
-	{
-		// Fallback to current directory
-		strcpy(launchDir, "./");
-	}
+    // Get current working directory without risking overflow
+    if (getcwd(launchDir, MAX_PATH - 1) == NULL)
+    {
+        // Fallback to current directory
+        strncpy(launchDir, "./", MAX_PATH - 1);
+        launchDir[MAX_PATH - 1] = '\0';
+    }
+    else
+    {
+        size_t len = strlen(launchDir);
+        if (len > 0 && len < (size_t)MAX_PATH - 1 && launchDir[len - 1] != '/')
+        {
+            launchDir[len] = '/';
+            launchDir[len + 1] = '\0';
+        }
+    }
 
 	// Set screenshot directory
 	memset(screenshotDir, 0x00, sizeof(screenshotDir));

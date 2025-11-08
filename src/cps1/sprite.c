@@ -18,7 +18,11 @@
 
 #define MAKE_KEY(code, attr)		(code | ((attr & 0x0f) << 28))
 #define MAKE_HIGH_KEY(code, attr)	(code | ((attr & 0x19f) << 16))
-#define PSP_UNCACHE_PTR(p)			(((UINT32)(p)) | 0x40000000)
+#ifdef SDL2
+#define PSP_UNCACHE_PTR(p)             (p)
+#else
+#define PSP_UNCACHE_PTR(p)             (((UINT32)(p)) | 0x40000000)
+#endif
 
 
 /******************************************************************************
