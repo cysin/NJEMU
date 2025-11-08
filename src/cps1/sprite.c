@@ -1520,6 +1520,18 @@ void blit_start(int high_layer)
 
 void blit_finish(void)
 {
+	UINT16 pre_sample = 0;
+	UINT16 draw_before = 0;
+	int log_copy_sample = 0;
+#ifdef SDL2
+	static int logged_copy_sample = 0;
+	if (!cps_rotate_screen && !cps_flip_screen && !logged_copy_sample)
+	{
+		pre_sample = *((UINT16 *)video_frame_addr(work_frame, cps_src_clip.left, cps_src_clip.top));
+		draw_before = *((UINT16 *)video_frame_addr(draw_frame, cps_clip[option_stretch].left, cps_clip[option_stretch].top));
+		log_copy_sample = 1;
+	}
+#endif
 	if (cps_rotate_screen)
 	{
 		if (cps_flip_screen)
@@ -1537,6 +1549,25 @@ void blit_finish(void)
 		else
 			video_copy_rect(work_frame, draw_frame, &cps_src_clip, &cps_clip[option_stretch]);
 	}
+#ifdef SDL2
+	static int logged_frames = 0;
+	if (logged_frames < 5)
+	{
+		UINT16 *wf = (UINT16 *)work_frame;
+		uint64_t checksum = 0;
+		for (int i = 0; i < BUF_WIDTH * SCR_HEIGHT; i += 97)
+			checksum += wf[i];
+		printf("[DEBUG] blit_finish checksum=%llu\n", (unsigned long long)checksum);
+		logged_frames++;
+	}
+	if (log_copy_sample && !logged_copy_sample)
+	{
+		UINT16 draw_after = *((UINT16 *)video_frame_addr(draw_frame, cps_clip[option_stretch].left, cps_clip[option_stretch].top));
+		printf("[DEBUG] blit_finish copy sample: pre=%04x draw_before=%04x draw_after=%04x\n",
+		       pre_sample, draw_before, draw_after);
+		logged_copy_sample = 1;
+	}
+#endif
 }
 
 
@@ -1588,10 +1619,30 @@ void blit_draw_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 				object_delete_sprite();
 			}
 
-			idx = object_insert_sprite(key);
-			dst = SWIZZLED8_16x16(tex_object, idx);
-			src = &gfx_object[code << 7];
-			col = color_table[attr & 0x0f];
+            idx = object_insert_sprite(key);
+#ifdef SDL2
+            {
+                int u0 = (idx & 0x001f) << 4;
+                int v0 = (idx & 0x03e0) >> 1;
+                dst = &tex_object[v0 * BUF_WIDTH + u0];
+                src = &gfx_object[code << 7];
+                col = color_table[attr & 0x0f];
+                for (int line = 0; line < 16; line++)
+                {
+                    tile = *(UINT32 *)(src + 0);
+                    *(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+                    *(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+                    tile = *(UINT32 *)(src + 4);
+                    *(UINT32 *)(dst +  8) = ((tile >> 0) & 0x0f0f0f0f) | col;
+                    *(UINT32 *)(dst + 12) = ((tile >> 4) & 0x0f0f0f0f) | col;
+                    src += 8;
+                    dst += BUF_WIDTH;
+                }
+            }
+#else
+            dst = SWIZZLED8_16x16(tex_object, idx);
+            src = &gfx_object[code << 7];
+            col = color_table[attr & 0x0f];
 
 			while (lines--)
 			{
@@ -1604,6 +1655,7 @@ void blit_draw_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 				src += 8;
 				dst += swizzle_table_8bit[lines];
 			}
+#endif
 		}
 
 		object = &vertices_object[object_index++];
@@ -1669,19 +1721,27 @@ void blit_finish_object(void)
 		printf("[DEBUG] sprite %d: passed clipping, drawing...\n", i);
 
 		// Draw 16x16 sprite
+#ifdef SDL2
+		int tile_idx = ((v << 1) & 0x03e0) | (u >> 4);
+		UINT8 *tile = NONE_SWIZZLED_16x16(tex_object, tile_idx);
+#endif
 		for (py = 0; py < 16; py++)
 		{
+#ifdef SDL2
+			src = tile + (py * 16);
+#else
 			src = &tex_object[(v + py) * BUF_WIDTH + u];
+#endif
 			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
 
-			for (px = 0; px < 16; px++)
-			{
-				UINT8 pixel = src[px];
-				if ((pixel & 0x0f) != 0x0f)  // Not transparent
-				{
-					dst[px] = palette[pixel & 0x0f];
-				}
-			}
+            for (px = 0; px < 16; px++)
+            {
+                UINT8 pixel = src[px];
+                if ((pixel & 0x0f) != 0x0f)  // Not transparent
+                {
+                    dst[px] = palette[pixel & 0x0f];
+                }
+            }
 		}
 	}
 #else
@@ -1778,19 +1838,33 @@ void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 gfxset
 			scroll1_delete_sprite();
 		}
 
-		idx = scroll1_insert_sprite(key);
-		dst = SWIZZLED8_8x8(tex_scroll1, idx);
-		src = &gfx_scroll1[(code << 6) + (gfxset << 2)];
-		col = color_table[attr & 0x0f];
-
-		while (lines--)
-		{
-			tile = *(UINT32 *)(src + 0);
-			*(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
-			src += 8;
-			dst += 16;
-		}
+        idx = scroll1_insert_sprite(key);
+#ifdef SDL2
+        {
+            int u0 = (idx & 0x003f) << 3;
+            int v0 = (idx & 0x0fc0) >> 3;
+            dst = &tex_scroll1[v0 * BUF_WIDTH + u0];
+            src = &gfx_scroll1[(code << 6) + (gfxset << 2)];
+            col = color_table[attr & 0x0f];
+            for (int line = 0; line < 8; line++)
+            {
+                tile = *(UINT32 *)(src + 0);
+                *(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+                *(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+                src += 8;
+                dst += BUF_WIDTH;
+            }
+        }
+#else
+        while (lines--)
+        {
+            tile = *(UINT32 *)(src + 0);
+            *(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+            *(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+            src += 8;
+            dst += 16;
+        }
+#endif
 	}
 
 	if (attr & 0x10)
@@ -1804,10 +1878,16 @@ void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 gfxset
 		clut0_num += 2;
 	}
 
-	vertices[0].x = vertices[1].x = x;
-	vertices[0].y = vertices[1].y = y;
-	vertices[0].u = vertices[1].u = (idx & 0x003f) << 3;
-	vertices[0].v = vertices[1].v = (idx & 0x0fc0) >> 3;
+    vertices[0].x = vertices[1].x = x;
+    vertices[0].y = vertices[1].y = y;
+#ifdef SDL2
+    // For SDL2 software path, pass tile index through 'u' and ignore 'v'
+    vertices[0].u = vertices[1].u = idx;
+    vertices[0].v = vertices[1].v = 0;
+#else
+    vertices[0].u = vertices[1].u = (idx & 0x003f) << 3;
+    vertices[0].v = vertices[1].v = (idx & 0x0fc0) >> 3;
+#endif
 
 	attr ^= 0x60;
 	vertices[(attr & 0x20) >> 5].u += 8;
@@ -1825,120 +1905,133 @@ void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 gfxset
 void blit_finish_scroll1(void)
 {
 #ifdef SDL2
-	// SDL2: Software rendering for scroll1 (8x8 tiles)
-	int i, px, py;
-	struct Vertex *vertices;
-	UINT16 *dst, *palette;
-	UINT8 *src;
-	int x, y, u, v;
+    int i, px, py;
+    struct Vertex *vertices;
+    UINT16 *dst, *palette;
+    UINT8 *src;
+    int x, y;
+    static int logged_pixel_sample = 0;
+    static int palette_logged = 0;
+    int sample_x = 0;
+    int sample_y = 0;
 
-	printf("[DEBUG] blit_finish_scroll1: clut0_num=%d, clut1_num=%d\n", clut0_num, clut1_num);
-	printf("[DEBUG] blit_finish_scroll1: clut=%p, tex_scroll1=%p, work_frame=%p\n", clut, tex_scroll1, work_frame);
+    for (i = 0; i < clut0_num; i += 2)
+    {
+        vertices = &vertices_scroll[0][i];
+        x = vertices[0].x;
+        y = vertices[0].y;
+        int tile_idx = vertices[0].u;
 
-	// Draw clut0 sprites
-	for (i = 0; i < clut0_num; i += 2)
-	{
-		vertices = &vertices_scroll[0][i];
-		x = vertices[0].x;
-		y = vertices[0].y;
-		u = vertices[0].u;
-		v = vertices[0].v;
+        palette = (UINT16 *)&clut[32 << 4];
 
-		printf("[DEBUG] tile %d: x=%d y=%d u=%d v=%d\n", i, x, y, u, v);
+        if (x < 64 || x + 8 > 448 || y < 16 || y + 8 > 240) continue;
 
-		palette = (UINT16 *)&clut[0];
+        UINT8 *tile = NONE_SWIZZLED_8x8(tex_scroll1, tile_idx);
+        if (!palette_logged)
+        {
+            printf("[DEBUG] scroll1 palette sample: %04x %04x %04x %04x\n",
+                   palette[0], palette[1], palette[2], palette[3]);
+            printf("[DEBUG] scroll1 tile data sample: %02x %02x %02x %02x\n",
+                   tile[0], tile[1], tile[2], tile[3]);
+            palette_logged = 1;
+        }
 
-		if (x < 64 || x + 8 > 448 || y < 16 || y + 8 > 240) {
-			printf("[DEBUG] tile %d: clipped\n", i);
-			continue;
-		}
+        for (py = 0; py < 8; py++)
+        {
+            src = tile + (py * 8);
+            dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
 
-		printf("[DEBUG] tile %d: rendering...\n", i);
-		for (py = 0; py < 8; py++)
-		{
-			src = &tex_scroll1[(v + py) * BUF_WIDTH + u];
-			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
-			printf("[DEBUG] tile %d py=%d: src=%p dst=%p\n", i, py, src, dst);
+            for (px = 0; px < 8; px++)
+            {
+                UINT8 pixel = src[px];
+                if ((pixel & 0x0f) != 0x0f)
+                {
+                    dst[px] = palette[pixel & 0x0f];
+                }
+            }
+        }
 
-			for (px = 0; px < 8; px++)
-			{
-				UINT8 pixel = src[px];
-				if ((pixel & 0x0f) != 0x0f)
-				{
-					dst[px] = palette[pixel & 0x0f];
-				}
-			}
-		}
-		printf("[DEBUG] tile %d: done\n", i);
-	}
+        if (!logged_pixel_sample)
+        {
+            sample_x = x;
+            sample_y = y;
+        }
+    }
 
-	// Draw clut1 sprites
-	for (i = 0; i < clut1_num; i += 2)
-	{
-		vertices = &vertices_scroll[1][i];
-		x = vertices[0].x;
-		y = vertices[0].y;
-		u = vertices[0].u;
-		v = vertices[0].v;
+    for (i = 0; i < clut1_num; i += 2)
+    {
+        vertices = &vertices_scroll[1][i];
+        x = vertices[0].x;
+        y = vertices[0].y;
+        int tile_idx = vertices[0].u;
 
-		palette = (UINT16 *)&clut[16];
+        palette = (UINT16 *)&clut[48 << 4];
 
-		if (x < 64 || x + 8 > 448 || y < 16 || y + 8 > 240) continue;
+        if (x < 64 || x + 8 > 448 || y < 16 || y + 8 > 240) continue;
 
-		for (py = 0; py < 8; py++)
-		{
-			src = &tex_scroll1[(v + py) * BUF_WIDTH + u];
-			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
+        UINT8 *tile = NONE_SWIZZLED_8x8(tex_scroll1, tile_idx);
 
-			for (px = 0; px < 8; px++)
-			{
-				UINT8 pixel = src[px];
-				if ((pixel & 0x0f) != 0x0f)
-				{
-					dst[px] = palette[pixel & 0x0f];
-				}
-			}
-		}
-	}
+        for (py = 0; py < 8; py++)
+        {
+            src = tile + (py * 8);
+            dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
+
+            for (px = 0; px < 8; px++)
+            {
+                UINT8 pixel = src[px];
+                if ((pixel & 0x0f) != 0x0f)
+                {
+                    dst[px] = palette[pixel & 0x0f];
+                }
+            }
+        }
+    }
+
+    if (!logged_pixel_sample && (clut0_num + clut1_num) > 0)
+    {
+        UINT16 sample = *((UINT16 *)video_frame_addr(work_frame, sample_x, sample_y));
+        printf("[DEBUG] scroll1 work pixel=%04x at (%d,%d)\n", sample, sample_x, sample_y);
+        logged_pixel_sample = 1;
+    }
+
+    clut0_num = clut1_num = 0;
 #else
-	struct Vertex *vertices;
+    struct Vertex *vertices;
 
-	if (clut0_num + clut1_num == 0) return;
+    if (clut0_num + clut1_num == 0) return;
 
-	sceGuStart(GU_DIRECT, gulist);
-	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(64, 16, 448, 240);
-	sceGuTexMode(GU_PSM_T8, 0, 0, GU_TRUE);
-	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scroll1);
+    sceGuStart(GU_DIRECT, gulist);
+    sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
+    sceGuScissor(64, 16, 448, 240);
+    sceGuTexMode(GU_PSM_T8, 0, 0, GU_TRUE);
+    sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scroll1);
 
-	vertices = (struct Vertex *)sceGuGetMemory((clut0_num + clut1_num) * sizeof(struct Vertex));
+    vertices = (struct Vertex *)sceGuGetMemory((clut0_num + clut1_num) * sizeof(struct Vertex));
 
-	if (clut0_num)
-	{
-		sceGuClutLoad(256/8, &clut[32 << 4]);
+    if (clut0_num)
+    {
+        sceGuClutLoad(256/8, &clut[32 << 4]);
 
-		memcpy(vertices, vertices_scroll[0], clut0_num * sizeof(struct Vertex));
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut0_num, NULL, vertices);
-		vertices += clut0_num;
+        memcpy(vertices, vertices_scroll[0], clut0_num * sizeof(struct Vertex));
+        sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut0_num, NULL, vertices);
+        vertices += clut0_num;
 
-		clut0_num = 0;
-	}
-	if (clut1_num)
-	{
-		sceGuClutLoad(256/8, &clut[48 << 4]);
+        clut0_num = 0;
+    }
+    if (clut1_num)
+    {
+        sceGuClutLoad(256/8, &clut[48 << 4]);
 
-		memcpy(vertices, vertices_scroll[1], clut1_num * sizeof(struct Vertex));
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut1_num, NULL, vertices);
+        memcpy(vertices, vertices_scroll[1], clut1_num * sizeof(struct Vertex));
+        sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut1_num, NULL, vertices);
 
-		clut1_num = 0;
-	}
+        clut1_num = 0;
+    }
 
-	sceGuFinish();
-	sceGuSync(0, GU_SYNC_FINISH);
+    sceGuFinish();
+    sceGuSync(0, GU_SYNC_FINISH);
 #endif
 }
-
-
 /*------------------------------------------------------------------------
 	SCROLL2�N���b�v�͈͐ݒ�
 ------------------------------------------------------------------------*/
@@ -2192,28 +2285,51 @@ void blit_draw_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 			scroll3_delete_sprite();
 		}
 
-		idx = scroll3_insert_sprite(key);
-		dst = SWIZZLED8_32x32(tex_scroll3, idx);
-		src = &gfx_scroll3[code << 9];
-		col = color_table[attr & 0x0f];
-
-		while (lines--)
-		{
-			tile = *(UINT32 *)(src + 0);
-			*(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
-			tile = *(UINT32 *)(src + 4);
-			*(UINT32 *)(dst +  8) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(UINT32 *)(dst + 12) = ((tile >> 4) & 0x0f0f0f0f) | col;
-			tile = *(UINT32 *)(src + 8);
-			*(UINT32 *)(dst + 128) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(UINT32 *)(dst + 132) = ((tile >> 4) & 0x0f0f0f0f) | col;
-			tile = *(UINT32 *)(src + 12);
-			*(UINT32 *)(dst + 136) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(UINT32 *)(dst + 140) = ((tile >> 4) & 0x0f0f0f0f) | col;
-			src += 16;
-			dst += swizzle_table_8bit[lines];
-		}
+        idx = scroll3_insert_sprite(key);
+#ifdef SDL2
+        {
+            int u0 = (idx & 0x000f) << 5;
+            int v0 = (idx & 0x00f0) << 1;
+            dst = &tex_scroll3[v0 * BUF_WIDTH + u0];
+            src = &gfx_scroll3[code << 9];
+            col = color_table[attr & 0x0f];
+            for (int line = 0; line < 32; line++)
+            {
+                tile = *(UINT32 *)(src + 0);
+                *(UINT32 *)(dst +   0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+                *(UINT32 *)(dst +   4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+                tile = *(UINT32 *)(src + 4);
+                *(UINT32 *)(dst +   8) = ((tile >> 0) & 0x0f0f0f0f) | col;
+                *(UINT32 *)(dst +  12) = ((tile >> 4) & 0x0f0f0f0f) | col;
+                tile = *(UINT32 *)(src + 8);
+                *(UINT32 *)(dst +  16) = ((tile >> 0) & 0x0f0f0f0f) | col;
+                *(UINT32 *)(dst +  20) = ((tile >> 4) & 0x0f0f0f0f) | col;
+                tile = *(UINT32 *)(src + 12);
+                *(UINT32 *)(dst +  24) = ((tile >> 0) & 0x0f0f0f0f) | col;
+                *(UINT32 *)(dst +  28) = ((tile >> 4) & 0x0f0f0f0f) | col;
+                src += 16;
+                dst += BUF_WIDTH;
+            }
+        }
+#else
+        while (lines--)
+        {
+            tile = *(UINT32 *)(src + 0);
+            *(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+            *(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+            tile = *(UINT32 *)(src + 4);
+            *(UINT32 *)(dst +  8) = ((tile >> 0) & 0x0f0f0f0f) | col;
+            *(UINT32 *)(dst + 12) = ((tile >> 4) & 0x0f0f0f0f) | col;
+            tile = *(UINT32 *)(src + 8);
+            *(UINT32 *)(dst + 128) = ((tile >> 0) & 0x0f0f0f0f) | col;
+            *(UINT32 *)(dst + 132) = ((tile >> 4) & 0x0f0f0f0f) | col;
+            tile = *(UINT32 *)(src + 12);
+            *(UINT32 *)(dst + 136) = ((tile >> 0) & 0x0f0f0f0f) | col;
+            *(UINT32 *)(dst + 140) = ((tile >> 4) & 0x0f0f0f0f) | col;
+            src += 16;
+            dst += swizzle_table_8bit[lines];
+        }
+#endif
 	}
 
 	if (attr & 0x10)
@@ -2275,14 +2391,14 @@ void blit_finish_scroll3(void)
 			src = &tex_scroll3[(v + py) * BUF_WIDTH + u];
 			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
 
-			for (px = 0; px < 8; px++)
-			{
-				UINT8 pixel = src[px];
-				if ((pixel & 0x0f) != 0x0f)
-				{
-					dst[px] = palette[pixel & 0x0f];
-				}
-			}
+            for (px = 0; px < 8; px++)
+            {
+                UINT8 pixel = src[px];
+                if ((pixel & 0x0f) != 0x0f)
+                {
+                    dst[px] = palette[pixel & 0x0f];
+                }
+            }
 		}
 	}
 
@@ -2304,14 +2420,14 @@ void blit_finish_scroll3(void)
 			src = &tex_scroll3[(v + py) * BUF_WIDTH + u];
 			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
 
-			for (px = 0; px < 8; px++)
-			{
-				UINT8 pixel = src[px];
-				if ((pixel & 0x0f) != 0x0f)
-				{
-					dst[px] = palette[pixel & 0x0f];
-				}
-			}
+            for (px = 0; px < 8; px++)
+            {
+                UINT8 pixel = src[px];
+                if ((pixel & 0x0f) != 0x0f)
+                {
+                    dst[px] = palette[pixel & 0x0f];
+                }
+            }
 		}
 	}
 

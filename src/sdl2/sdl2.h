@@ -193,12 +193,19 @@ static inline void sceGuTexImage(int mip, int width, int height, int stride, voi
 static inline void sceGuClutLoad(int num, void *clut) { (void)num; (void)clut; }
 static inline void sceGuDepthMask(int mask) { (void)mask; }
 
-// Texture swizzling macros (SDL2 doesn't need swizzling, return same pointer)
+#ifdef SDL2
+// SDL2: store textures linearly
+#define SWIZZLED8_8x8(tex, idx) (&tex[(idx) << 6])
+#define SWIZZLED8_16x16(tex, idx) (&tex[(idx) << 8])
+#define SWIZZLED8_32x32(tex, idx) (&tex[(idx) << 10])
+#else
+// PSP swizzled layout
 #define SWIZZLED8_8x8(tex, idx) (&tex[((idx & ~1) << 6) | ((idx & 1) << 3)])
 #define SWIZZLED8_16x16(tex, idx) (&tex[((idx & ~31) << 8) | ((idx & 31) << 7)])
 #define SWIZZLED8_32x32(tex, idx) (&tex[((idx & ~15) << 10) | ((idx & 15) << 8)])
+#endif
 
-// Non-swizzled texture macros (SDL2 doesn't use swizzling)
+// Non-swizzled texture macros
 #define NONE_SWIZZLED_8x8(tex, idx) (&tex[(idx) << 6])
 #define NONE_SWIZZLED_16x16(tex, idx) (&tex[(idx) << 8])
 #define NONE_SWIZZLED_32x32(tex, idx) (&tex[(idx) << 10])
