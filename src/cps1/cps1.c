@@ -213,6 +213,9 @@ static void cps1_run(void)
 		int frame_count = 0;
 		while (Loop == LOOP_EXEC)
 		{
+			printf("[DEBUG] cps1_run: Frame %d start, Loop=%d\n", frame_count + 1, Loop);
+			fflush(stdout);
+
 			if (frame_count == 0)
 			{
 				printf("[DEBUG] cps1_run: First iteration - Sleep=%d, Loop=%d\n", Sleep, Loop);
@@ -263,6 +266,12 @@ static void cps1_run(void)
 			if (frame_count == 1 || frame_count == 60 || (frame_count % 300 == 0))
 			{
 				printf("[DEBUG] cps1_run: Frame %d\n", frame_count);
+				fflush(stdout);
+			}
+
+			if (frame_count == 1)
+			{
+				printf("[DEBUG] cps1_run: End of frame 1, about to loop back\n");
 				fflush(stdout);
 			}
 		}

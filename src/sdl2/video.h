@@ -18,6 +18,10 @@
 #define	FRAMESIZE			(BUF_WIDTH * SCR_HEIGHT * sizeof(UINT16))
 #define	FRAMESIZE32			(BUF_WIDTH * SCR_HEIGHT * sizeof(UINT32))
 
+// Work frame must be large enough for screen + texture buffers
+// Total: SCR_HEIGHT (272) + SCROLLH_MAX_HEIGHT (192) + 4*TEXTURE_HEIGHT (4*512)
+#define WORK_FRAME_HEIGHT	2512
+
 // Video mode flags
 #define VIDEO_16BPP			0
 #define VIDEO_32BPP			1

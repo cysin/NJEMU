@@ -1631,9 +1631,55 @@ void blit_draw_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 void blit_finish_object(void)
 {
 #ifdef SDL2
-	// SDL2: TODO - Implement software rendering for objects
-	// For now, just return to avoid hangs
-	return;
+	// SDL2: Software rendering for objects (16x16 sprites)
+	int i, px, py;
+	OBJECT *object;
+	UINT16 *dst, *palette;
+	UINT8 *src;
+	int x, y, u, v;
+
+	printf("[DEBUG] blit_finish_object: object_num=%d, object_index=%d\n", object_num, object_index);
+	if (!object_num) return;
+	printf("[DEBUG] blit_finish_object: Starting sprite rendering\n");
+
+	for (i = 0; i < object_index; i++)
+	{
+		object = &vertices_object[i];
+
+		// Get sprite position and texture coordinates
+		x = object->vertices[0].x;
+		y = object->vertices[0].y;
+		u = object->vertices[0].u;
+		v = object->vertices[0].v;
+
+		printf("[DEBUG] sprite %d: x=%d y=%d u=%d v=%d clut=%d\n", i, x, y, u, v, object->clut);
+
+		// Get palette for this sprite
+		palette = (UINT16 *)&clut[object->clut << 4];
+
+		// Clip to screen bounds
+		if (x < 64 || x + 16 > 448 || y < 16 || y + 16 > 240) {
+			printf("[DEBUG] sprite %d: clipped out of bounds\n", i);
+			continue;
+		}
+		printf("[DEBUG] sprite %d: passed clipping, drawing...\n", i);
+
+		// Draw 16x16 sprite
+		for (py = 0; py < 16; py++)
+		{
+			src = &tex_object[(v + py) * BUF_WIDTH + u];
+			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
+
+			for (px = 0; px < 16; px++)
+			{
+				UINT8 pixel = src[px];
+				if ((pixel & 0x0f) != 0x0f)  // Not transparent
+				{
+					dst[px] = palette[pixel & 0x0f];
+				}
+			}
+		}
+	}
 #else
 	int i, total_sprites = 0;
 	UINT8 color = 0;
@@ -1775,8 +1821,81 @@ void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 gfxset
 void blit_finish_scroll1(void)
 {
 #ifdef SDL2
-	// SDL2: TODO - Implement software rendering for scroll1
-	return;
+	// SDL2: Software rendering for scroll1 (8x8 tiles)
+	int i, px, py;
+	struct Vertex *vertices;
+	UINT16 *dst, *palette;
+	UINT8 *src;
+	int x, y, u, v;
+
+	printf("[DEBUG] blit_finish_scroll1: clut0_num=%d, clut1_num=%d\n", clut0_num, clut1_num);
+	printf("[DEBUG] blit_finish_scroll1: clut=%p, tex_scroll1=%p, work_frame=%p\n", clut, tex_scroll1, work_frame);
+
+	// Draw clut0 sprites
+	for (i = 0; i < clut0_num; i += 2)
+	{
+		vertices = &vertices_scroll[0][i];
+		x = vertices[0].x;
+		y = vertices[0].y;
+		u = vertices[0].u;
+		v = vertices[0].v;
+
+		printf("[DEBUG] tile %d: x=%d y=%d u=%d v=%d\n", i, x, y, u, v);
+
+		palette = (UINT16 *)&clut[0];
+
+		if (x < 64 || x + 8 > 448 || y < 16 || y + 8 > 240) {
+			printf("[DEBUG] tile %d: clipped\n", i);
+			continue;
+		}
+
+		printf("[DEBUG] tile %d: rendering...\n", i);
+		for (py = 0; py < 8; py++)
+		{
+			src = &tex_scroll1[(v + py) * BUF_WIDTH + u];
+			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
+			printf("[DEBUG] tile %d py=%d: src=%p dst=%p\n", i, py, src, dst);
+
+			for (px = 0; px < 8; px++)
+			{
+				UINT8 pixel = src[px];
+				if ((pixel & 0x0f) != 0x0f)
+				{
+					dst[px] = palette[pixel & 0x0f];
+				}
+			}
+		}
+		printf("[DEBUG] tile %d: done\n", i);
+	}
+
+	// Draw clut1 sprites
+	for (i = 0; i < clut1_num; i += 2)
+	{
+		vertices = &vertices_scroll[1][i];
+		x = vertices[0].x;
+		y = vertices[0].y;
+		u = vertices[0].u;
+		v = vertices[0].v;
+
+		palette = (UINT16 *)&clut[16];
+
+		if (x < 64 || x + 8 > 448 || y < 16 || y + 8 > 240) continue;
+
+		for (py = 0; py < 8; py++)
+		{
+			src = &tex_scroll1[(v + py) * BUF_WIDTH + u];
+			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
+
+			for (px = 0; px < 8; px++)
+			{
+				UINT8 pixel = src[px];
+				if ((pixel & 0x0f) != 0x0f)
+				{
+					dst[px] = palette[pixel & 0x0f];
+				}
+			}
+		}
+	}
 #else
 	struct Vertex *vertices;
 
@@ -2125,8 +2244,75 @@ void blit_draw_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 void blit_finish_scroll3(void)
 {
 #ifdef SDL2
-	// SDL2: TODO - Implement software rendering for scroll3
-	return;
+	// SDL2: Software rendering for scroll3 (8x8 tiles)
+	int i, px, py;
+	struct Vertex *vertices;
+	UINT16 *dst, *palette;
+	UINT8 *src;
+	int x, y, u, v;
+
+	printf("[DEBUG] blit_finish_scroll3: clut0_num=%d, clut1_num=%d\n", clut0_num, clut1_num);
+
+	// Draw clut0 sprites (palette at 96*16)
+	for (i = 0; i < clut0_num; i += 2)
+	{
+		vertices = &vertices_scroll[0][i];
+		x = vertices[0].x;
+		y = vertices[0].y;
+		u = vertices[0].u;
+		v = vertices[0].v;
+
+		palette = (UINT16 *)&clut[96 << 4];
+
+		if (x < 64 || x + 8 > 448 || y < 16 || y + 8 > 240) continue;
+
+		for (py = 0; py < 8; py++)
+		{
+			src = &tex_scroll3[(v + py) * BUF_WIDTH + u];
+			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
+
+			for (px = 0; px < 8; px++)
+			{
+				UINT8 pixel = src[px];
+				if ((pixel & 0x0f) != 0x0f)
+				{
+					dst[px] = palette[pixel & 0x0f];
+				}
+			}
+		}
+	}
+
+	// Draw clut1 sprites (palette at 112*16)
+	for (i = 0; i < clut1_num; i += 2)
+	{
+		vertices = &vertices_scroll[1][i];
+		x = vertices[0].x;
+		y = vertices[0].y;
+		u = vertices[0].u;
+		v = vertices[0].v;
+
+		palette = (UINT16 *)&clut[112 << 4];
+
+		if (x < 64 || x + 8 > 448 || y < 16 || y + 8 > 240) continue;
+
+		for (py = 0; py < 8; py++)
+		{
+			src = &tex_scroll3[(v + py) * BUF_WIDTH + u];
+			dst = (UINT16 *)video_frame_addr(work_frame, x, y + py);
+
+			for (px = 0; px < 8; px++)
+			{
+				UINT8 pixel = src[px];
+				if ((pixel & 0x0f) != 0x0f)
+				{
+					dst[px] = palette[pixel & 0x0f];
+				}
+			}
+		}
+	}
+
+	clut0_num = 0;
+	clut1_num = 0;
 #else
 	struct Vertex *vertices;
 

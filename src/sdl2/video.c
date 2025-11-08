@@ -136,9 +136,10 @@ void video_init(void)
 	}
 
 	// Allocate framebuffers as SDL surfaces
+	// work surface needs extra space for texture buffers
 	show_surface = SDL_CreateRGBSurfaceWithFormat(0, BUF_WIDTH, SCR_HEIGHT, bpp * 8, pixel_fmt);
 	draw_surface = SDL_CreateRGBSurfaceWithFormat(0, BUF_WIDTH, SCR_HEIGHT, bpp * 8, pixel_fmt);
-	work_surface = SDL_CreateRGBSurfaceWithFormat(0, BUF_WIDTH, SCR_HEIGHT, bpp * 8, pixel_fmt);
+	work_surface = SDL_CreateRGBSurfaceWithFormat(0, BUF_WIDTH, WORK_FRAME_HEIGHT, bpp * 8, pixel_fmt);
 	tex_surface = SDL_CreateRGBSurfaceWithFormat(0, BUF_WIDTH, SCR_HEIGHT, bpp * 8, pixel_fmt);
 
 	if (!show_surface || !draw_surface || !work_surface || !tex_surface)
@@ -153,6 +154,13 @@ void video_init(void)
 	draw_frame = draw_surface->pixels;
 	work_frame = work_surface->pixels;
 	tex_frame = tex_surface->pixels;
+
+	// Debug: Check surface pitches
+	printf("[DEBUG] Surface pitches: show=%d draw=%d work=%d tex=%d (expected=%d)\n",
+	       show_surface->pitch, draw_surface->pitch, work_surface->pitch, tex_surface->pitch,
+	       BUF_WIDTH * bpp);
+	printf("[DEBUG] work_surface: width=%d height=%d pitch=%d\n",
+	       work_surface->w, work_surface->h, work_surface->pitch);
 
 	// Allocate UI texture buffer (for thumbnails and UI rendering)
 	// Always use 16-bit format for UI texture

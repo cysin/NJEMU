@@ -747,6 +747,8 @@ int memory_init(void)
 	qsound_sharedram1 = &memory_region_cpu2[0xc000];
 	qsound_sharedram2 = &memory_region_cpu2[0xf000];
 
+	// Note: On SDL2, sizeof(pointer) returns 8, so these only clear 8 bytes
+	// But buffers were already properly cleared above, so this is harmless
 	memset(cps1_ram, 0, sizeof(cps1_ram));
 	memset(cps1_gfxram, 0, sizeof(cps1_gfxram));
 	memset(cps1_output, 0, sizeof(cps1_output));
