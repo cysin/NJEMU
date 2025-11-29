@@ -33,11 +33,6 @@ int file_open(const char *fname1, const char *fname2, const UINT32 crc, char *fn
 	struct zip_find_t file;
 	char path[MAX_PATH];
 
-	printf("[DEBUG] file_open: fname1='%s', fname2='%s', crc=0x%08x, fname='%s'\n",
-	       fname1, fname2 ? fname2 : "(null)", crc, fname ? fname : "(null)");
-	printf("[DEBUG] file_open: game_dir='%s', launchDir='%s'\n", game_dir, launchDir);
-	fflush(stdout);
-
 	for (i = 0; i < 3; i++)
 	{
 		switch (i)
@@ -47,52 +42,28 @@ int file_open(const char *fname1, const char *fname2, const UINT32 crc, char *fn
 		case 2: sprintf(path, "%sroms/%s.zip", launchDir, fname2); break;
 		}
 
-		printf("[DEBUG] file_open: Trying path #%d: '%s'\n", i, path);
-		fflush(stdout);
-
 		if (zip_open(path) != -1)
 		{
-			printf("[DEBUG] file_open: zip_open succeeded\n");
-			fflush(stdout);
 			if (zip_findfirst(&file))
 			{
-				printf("[DEBUG] file_open: First file: '%s' CRC=0x%08x\n", file.name, file.crc32);
-				fflush(stdout);
 				if (file.crc32 == crc)
 				{
-					printf("[DEBUG] file_open: CRC MATCH on first file!\n");
-					fflush(stdout);
 					found = 1;
 				}
 				else
 				{
 					if (!found)
 					{
-						int count = 1;
 						while (zip_findnext(&file))
 						{
-							count++;
-							printf("[DEBUG] file_open: File #%d: '%s' CRC=0x%08x\n", count, file.name, file.crc32);
-							fflush(stdout);
 							if (file.crc32 == crc)
 							{
-								printf("[DEBUG] file_open: CRC MATCH found!\n");
-								fflush(stdout);
 								found = 1;
 								break;
 							}
 						}
-						if (!found) {
-							printf("[DEBUG] file_open: No CRC match after checking %d files\n", count);
-							fflush(stdout);
-						}
 					}
 				}
-			}
-			else
-			{
-				printf("[DEBUG] file_open: zip_findfirst returned FALSE (empty ZIP?)\n");
-				fflush(stdout);
 			}
 
 			if (!found)

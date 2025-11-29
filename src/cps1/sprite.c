@@ -1936,6 +1936,7 @@ void blit_finish_scroll1(void)
             palette_logged = 1;
         }
 
+        int tile_pixels_drawn = 0;
         for (py = 0; py < 8; py++)
         {
             src = tile + (py * 8);
@@ -1947,8 +1948,19 @@ void blit_finish_scroll1(void)
                 if ((pixel & 0x0f) != 0)  // Not transparent (color 0 is transparent)
                 {
                     dst[px] = palette[pixel & 0x0f];
+                    tile_pixels_drawn++;
+                    if (!logged_pixel_sample && tile_pixels_drawn == 1)
+                    {
+                        printf("[DEBUG] First pixel drawn: src[%d]=%02x -> palette[%d]=%04x at work_frame+%d\n",
+                               px, pixel, pixel & 0x0f, palette[pixel & 0x0f], (int)((char*)&dst[px] - (char*)work_frame));
+                    }
                 }
             }
+        }
+
+        if (tile_pixels_drawn > 0 && !logged_pixel_sample)
+        {
+            printf("[DEBUG] Tile at (%d,%d): drew %d pixels\n", x, y, tile_pixels_drawn);
         }
 
         if (!logged_pixel_sample)

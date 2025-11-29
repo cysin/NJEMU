@@ -140,50 +140,31 @@ static int load_rom_cpu1(void)
 	int i, res;
 	char fname[32], *parent;
 
-	printf("[DEBUG] load_rom_cpu1: Allocating %d bytes\n", memory_length_cpu1);
-	fflush(stdout);
 	if ((memory_region_cpu1 = memalign(MEM_ALIGN, memory_length_cpu1)) == NULL)
 	{
-		printf("[DEBUG] load_rom_cpu1: Memory allocation FAILED\n");
-		fflush(stdout);
 		error_memory("REGION_CPU1");
 		return 0;
 	}
 	memset(memory_region_cpu1, 0, memory_length_cpu1);
 
 	parent = strlen(parent_name) ? parent_name : NULL;
-	printf("[DEBUG] load_rom_cpu1: game_name='%s', parent='%s', num_cpu1rom=%d\n",
-	       game_name, parent ? parent : "(none)", num_cpu1rom);
-	fflush(stdout);
 
 	for (i = 0; i < num_cpu1rom; )
 	{
 		strcpy(fname, cpu1rom[i].name);
-		printf("[DEBUG] load_rom_cpu1: Opening ROM file '%s' (CRC: 0x%08x)\n",
-		       fname, cpu1rom[i].crc);
-		fflush(stdout);
 		res = file_open(game_name, parent, cpu1rom[i].crc, fname);
-		printf("[DEBUG] load_rom_cpu1: file_open() returned %d\n", res);
-		fflush(stdout);
 		if (res == -1 || res == -2)
 		{
 			if (res == -2)
 			{
-				printf("[DEBUG] load_rom_cpu1: CRC mismatch for '%s'\n", fname);
-				fflush(stdout);
 				error_crc(fname);
 			}
 			else
 			{
-				printf("[DEBUG] load_rom_cpu1: File not found '%s'\n", fname);
-				fflush(stdout);
 				error_file(fname);
 			}
 			return 0;
 		}
-
-		printf("[DEBUG] load_rom_cpu1: file_open() succeeded, loading ROM data\n");
-		fflush(stdout);
 
 		msg_printf(TEXT(LOADING), fname);
 
@@ -192,8 +173,6 @@ static int load_rom_cpu1(void)
 		file_close();
 	}
 
-	printf("[DEBUG] load_rom_cpu1: All CPU1 ROMs loaded successfully\n");
-	fflush(stdout);
 	return 1;
 }
 
@@ -608,9 +587,6 @@ int memory_init(void)
 {
 	int i, res;
 
-	printf("[DEBUG] memory_init: Setting up memory regions\n");
-	fflush(stdout);
-
 	memory_region_cpu1   = NULL;
 	memory_region_cpu2   = NULL;
 	memory_region_gfx1   = NULL;
@@ -632,7 +608,7 @@ int memory_init(void)
 	cps1_output = (UINT16 *)memalign(16, 0x100);
 	if (!cps1_ram || !cps1_gfxram || !cps1_output)
 	{
-		printf("[ERROR] Failed to allocate cps1 arrays\n");
+		fprintf(stderr, "Failed to allocate CPS1 arrays\n");
 		return 0;
 	}
 	memset(cps1_ram, 0, 0x10000);
@@ -640,23 +616,13 @@ int memory_init(void)
 	memset(cps1_output, 0, 0x100);
 #endif
 
-	printf("[DEBUG] memory_init: Skipping pad_wait_clear on SDL2\n");
-	fflush(stdout);
 #ifndef SDL2
 	pad_wait_clear();
 #endif
-	printf("[DEBUG] memory_init: Calling video_clear_screen\n");
-	fflush(stdout);
 	video_clear_screen();
-	printf("[DEBUG] memory_init: Calling msg_screen_init\n");
-	fflush(stdout);
 	msg_screen_init(WP_LOGO, ICON_SYSTEM, TEXT(LOAD_ROM));
 
-	printf("[DEBUG] memory_init: Calling msg_printf CHECKING_ROM_INFO\n");
-	fflush(stdout);
 	msg_printf(TEXT(CHECKING_ROM_INFO));
-	printf("[DEBUG] memory_init: About to call load_rom_info\n");
-	fflush(stdout);
 
 	if ((res = load_rom_info(game_name)) != 0)
 	{
@@ -725,21 +691,11 @@ int memory_init(void)
 
 	set_cpu_clock(psp_cpuclock);
 
-	printf("[DEBUG] memory_init: Loading ROM CPU1\n");
-	fflush(stdout);
-	if (load_rom_cpu1() == 0) { printf("[DEBUG] load_rom_cpu1 FAILED\n"); fflush(stdout); return 0; }
-	printf("[DEBUG] memory_init: Loading ROM CPU2\n");
-	fflush(stdout);
-	if (load_rom_cpu2() == 0) { printf("[DEBUG] load_rom_cpu2 FAILED\n"); fflush(stdout); return 0; }
-	printf("[DEBUG] memory_init: Loading ROM GFX1\n");
-	fflush(stdout);
-	if (load_rom_gfx1() == 0) { printf("[DEBUG] load_rom_gfx1 FAILED\n"); fflush(stdout); return 0; }
-	printf("[DEBUG] memory_init: Loading ROM SOUND1\n");
-	fflush(stdout);
-	if (load_rom_sound1() == 0) { printf("[DEBUG] load_rom_sound1 FAILED\n"); fflush(stdout); return 0; }
-	printf("[DEBUG] memory_init: Loading ROM USER1\n");
-	fflush(stdout);
-	if (load_rom_user1() == 0) { printf("[DEBUG] load_rom_user1 FAILED\n"); fflush(stdout); return 0; }
+	if (load_rom_cpu1() == 0) return 0;
+	if (load_rom_cpu2() == 0) return 0;
+	if (load_rom_gfx1() == 0) return 0;
+	if (load_rom_sound1() == 0) return 0;
+	if (load_rom_user1() == 0) return 0;
 
 	static_ram1 = (UINT8 *)cps1_ram - 0xff0000;
 	static_ram2 = (UINT8 *)cps1_gfxram - 0x900000;
