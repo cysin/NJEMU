@@ -1737,7 +1737,7 @@ void blit_finish_object(void)
             for (px = 0; px < 16; px++)
             {
                 UINT8 pixel = src[px];
-                if ((pixel & 0x0f) != 0x0f)  // Not transparent
+                if ((pixel & 0x0f) != 0)  // Not transparent (color 0 is transparent)
                 {
                     dst[px] = palette[pixel & 0x0f];
                 }
@@ -1944,7 +1944,7 @@ void blit_finish_scroll1(void)
             for (px = 0; px < 8; px++)
             {
                 UINT8 pixel = src[px];
-                if ((pixel & 0x0f) != 0x0f)
+                if ((pixel & 0x0f) != 0)  // Not transparent (color 0 is transparent)
                 {
                     dst[px] = palette[pixel & 0x0f];
                 }
@@ -1979,7 +1979,7 @@ void blit_finish_scroll1(void)
             for (px = 0; px < 8; px++)
             {
                 UINT8 pixel = src[px];
-                if ((pixel & 0x0f) != 0x0f)
+                if ((pixel & 0x0f) != 0)  // Not transparent (color 0 is transparent)
                 {
                     dst[px] = palette[pixel & 0x0f];
                 }
@@ -2394,7 +2394,7 @@ void blit_finish_scroll3(void)
             for (px = 0; px < 8; px++)
             {
                 UINT8 pixel = src[px];
-                if ((pixel & 0x0f) != 0x0f)
+                if ((pixel & 0x0f) != 0)  // Not transparent (color 0 is transparent)
                 {
                     dst[px] = palette[pixel & 0x0f];
                 }
@@ -2423,7 +2423,7 @@ void blit_finish_scroll3(void)
             for (px = 0; px < 8; px++)
             {
                 UINT8 pixel = src[px];
-                if ((pixel & 0x0f) != 0x0f)
+                if ((pixel & 0x0f) != 0)  // Not transparent (color 0 is transparent)
                 {
                     dst[px] = palette[pixel & 0x0f];
                 }
