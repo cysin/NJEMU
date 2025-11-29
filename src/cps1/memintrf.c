@@ -78,6 +78,14 @@ static int num_snd1rom;
 static UINT8 *static_ram1;
 static UINT8 *static_ram2;
 
+static inline UINT8 ram1_read_byte(UINT32 offset) { return cps1_ram[(offset - 0xff0000) ^ 1]; }
+static inline UINT16 ram1_read_word(UINT32 offset) { return *(UINT16 *)(&((UINT8 *)cps1_ram)[offset - 0xff0000]); }
+static inline void ram1_write_byte(UINT32 offset, UINT8 data) { cps1_ram[(offset - 0xff0000) ^ 1] = data; }
+static inline void ram1_write_word(UINT32 offset, UINT16 data) { *(UINT16 *)(&((UINT8 *)cps1_ram)[offset - 0xff0000]) = data; }
+static inline UINT8 gfx_read_byte(UINT32 offset) { return ((UINT8 *)cps1_gfxram)[(offset - 0x900000) ^ 1]; }
+static inline UINT16 gfx_read_word(UINT32 offset) { return *(UINT16 *)(&((UINT8 *)cps1_gfxram)[offset - 0x900000]); }
+static inline void gfx_write_byte(UINT32 offset, UINT8 data) { ((UINT8 *)cps1_gfxram)[(offset - 0x900000) ^ 1] = data; }
+static inline void gfx_write_word(UINT32 offset, UINT16 data) { *(UINT16 *)(&((UINT8 *)cps1_gfxram)[offset - 0x900000]) = data; }
 
 /******************************************************************************
 	プロトタイプ
@@ -315,7 +323,16 @@ static int load_rom_info(const char *game_name)
 
 	sprintf(path, "%srominfo.cps1", launchDir);
 
-	if ((fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
+	fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+#ifdef PLATFORM_SDL
+	if (fd < 0)
+	{
+		sprintf(path, "%sdata/rominfo/rominfo.cps1", launchDir);
+		fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+	}
+#endif
+
+	if (fd >= 0)
 	{
 		size = sceIoLseek(fd, 0, SEEK_END);
 		sceIoLseek(fd, 0, SEEK_SET);
@@ -550,6 +567,9 @@ int memory_init(void)
 {
 	int i, res;
 
+	if (njemu_debug)
+		msg_printf("[cps1] memory_init start game=%s dir=%s", game_name, game_dir);
+
 	memory_region_cpu1   = NULL;
 	memory_region_cpu2   = NULL;
 	memory_region_gfx1   = NULL;
@@ -574,13 +594,17 @@ int memory_init(void)
 	{
 		switch (res)
 		{
-		case 1: msg_printf(TEXT(THIS_GAME_NOT_SUPPORTED)); break;
-		case 2: msg_printf(TEXT(ROM_NOT_FOUND)); break;
-		case 3: msg_printf(TEXT(ROMINFO_NOT_FOUND)); break;
+		case 1: msg_printf("[cps1] not supported"); break;
+		case 2: msg_printf("[cps1] rom not found"); break;
+		case 3: msg_printf("[cps1] rominfo not found"); break;
 		}
+#ifdef PLATFORM_SDL
+		Loop = LOOP_EXIT;
+#else
 		msg_printf(TEXT(PRESS_ANY_BUTTON2));
 		pad_wait_press(PAD_WAIT_INFINITY);
 		Loop = LOOP_BROWSER;
+#endif
 		return 0;
 	}
 
@@ -597,10 +621,14 @@ int memory_init(void)
 	}
 	if (!driver)
 	{
-		msg_printf(TEXT(DRIVER_FOR_x_NOT_FOUND), game_name);
+		msg_printf("[cps1] driver for %s not found", game_name);
+#ifdef PLATFORM_SDL
+		Loop = LOOP_EXIT;
+#else
 		msg_printf(TEXT(PRESS_ANY_BUTTON2));
 		pad_wait_press(PAD_WAIT_INFINITY);
 		Loop = LOOP_BROWSER;
+#endif
 		return 0;
 	}
 
@@ -637,11 +665,26 @@ int memory_init(void)
 
 	set_cpu_clock(psp_cpuclock);
 
+	if (njemu_debug) msg_printf("[cps1] load_rom_cpu1");
 	if (load_rom_cpu1() == 0) return 0;
+	if (njemu_debug) msg_printf("[cps1] load_rom_cpu2");
 	if (load_rom_cpu2() == 0) return 0;
+	if (njemu_debug) msg_printf("[cps1] load_rom_gfx1");
 	if (load_rom_gfx1() == 0) return 0;
+	if (njemu_debug) msg_printf("[cps1] load_rom_sound1");
 	if (load_rom_sound1() == 0) return 0;
+	if (njemu_debug) msg_printf("[cps1] load_rom_user1");
 	if (load_rom_user1() == 0) return 0;
+
+#ifdef PLATFORM_SDL
+	if (njemu_debug)
+		msg_printf("[cps1] rom sizes cpu1=%u cpu2=%u gfx1=%u sound1=%u user1=%u",
+			(unsigned)memory_length_cpu1,
+			(unsigned)memory_length_cpu2,
+			(unsigned)memory_length_gfx1,
+			(unsigned)memory_length_sound1,
+			(unsigned)memory_length_user1);
+#endif
 
 	static_ram1 = (UINT8 *)cps1_ram - 0xff0000;
 	static_ram2 = (UINT8 *)cps1_gfxram - 0x900000;
@@ -761,12 +804,12 @@ UINT8 m68000_read_memory_8(UINT32 offset)
 	switch (offset >> 16)
 	{
 	case 0xff:
-		return READ_BYTE(static_ram1, offset);
+		return ram1_read_byte(offset);
 
 	case 0x90:
 	case 0x91:
 	case 0x92:
-		return READ_BYTE(static_ram2, offset);
+		return gfx_read_byte(offset);
 
 	case 0xf0:
 		return qsound_rom_r(offset >> 1, mem_mask) >> shift;
@@ -851,12 +894,12 @@ UINT16 m68000_read_memory_16(UINT32 offset)
 	switch (offset >> 16)
 	{
 	case 0xff:
-		return READ_WORD(static_ram1, offset);
+		return ram1_read_word(offset);
 
 	case 0x90:
 	case 0x91:
 	case 0x92:
-		return READ_WORD(static_ram2, offset);
+		return gfx_read_word(offset);
 
 	case 0xf0:
 		return qsound_rom_r(offset >> 1, 0);
@@ -939,13 +982,13 @@ void m68000_write_memory_8(UINT32 offset, UINT8 data)
 	switch (offset >> 16)
 	{
 	case 0xff:
-		WRITE_BYTE(static_ram1, offset, data);
+		ram1_write_byte(offset, data);
 		return;
 
 	case 0x90:
 	case 0x91:
 	case 0x92:
-		WRITE_BYTE(static_ram2, offset, data);
+		gfx_write_byte(offset, data);
 		return;
 
 	case 0x80:
@@ -1015,11 +1058,11 @@ void m68000_write_memory_16(UINT32 offset, UINT16 data)
 	case 0x90:
 	case 0x91:
 	case 0x92:
-		WRITE_WORD(static_ram2, offset, data);
+		gfx_write_word(offset, data);
 		return;
 
 	case 0xff:
-		WRITE_WORD(static_ram1, offset, data);
+		ram1_write_word(offset, data);
 		return;
 
 	case 0x80:

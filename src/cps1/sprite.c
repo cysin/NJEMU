@@ -38,23 +38,20 @@ static void blit_draw_scroll2h_hardware(INT16 x, INT16 y, UINT32 code, UINT16 at
 	ƒ[ƒJƒ‹•Ï”/\‘¢‘Ì
 ******************************************************************************/
 
-typedef struct sprite_t SPRITE;
-typedef struct object_t OBJECT;
-
-struct sprite_t
+typedef struct sprite_t
 {
 	UINT32 key;
 	UINT32 used;
 	INT16 index;
 	UINT16 pal;
-	SPRITE *next;
-};
+	struct sprite_t *next;
+} SPRITE;
 
-struct object_t
+typedef struct object_t
 {
 	UINT32 clut;
 	struct Vertex vertices[2];
-};
+} OBJECT;
 
 static RECT cps_src_clip = { 64, 16, 64 + 384, 16 + 224 };
 
@@ -549,6 +546,43 @@ static void drawgfx16_16x16_flipxy_opaque(UINT32 *src, UINT16 *dst, UINT16 *pal,
 		dst -= BUF_WIDTH;
 	}
 }
+
+/*------------------------------------------------------------------------
+	SDL software tile helpers
+------------------------------------------------------------------------*/
+
+#ifdef PLATFORM_SDL
+static UINT8 get_tile_pen(const UINT8 *src, int index)
+{
+	UINT8 byte = src[index >> 1];
+	return (index & 1) ? (byte >> 4) & 0x0f : byte & 0x0f;
+}
+
+static void blit_tile_generic(const UINT8 *src, int width, int height, int flipx, int flipy, UINT16 *pal, UINT16 tpens, int x, int y)
+{
+	int startx = 0, starty = 0, endx = width, endy = height;
+	if (x <= -width || x >= SCR_WIDTH || y <= -height || y >= SCR_HEIGHT) return;
+	if (x < 0) startx = -x;
+	if (y < 0) starty = -y;
+	if (x + endx > SCR_WIDTH) endx = SCR_WIDTH - x;
+	if (y + endy > SCR_HEIGHT) endy = SCR_HEIGHT - y;
+	for (int dy = starty; dy < endy; dy++)
+	{
+		int sy = flipy ? (height - 1 - dy) : dy;
+		const UINT8 *srow = src + (sy * width) / 2;
+		UINT16 *drow = scrbitmap + (y + dy) * BUF_WIDTH + x;
+		for (int dx = startx; dx < endx; dx++)
+		{
+			int sx = flipx ? (width - 1 - dx) : dx;
+			UINT8 pen = get_tile_pen(srow, sx);
+			if (pen == 0) continue;
+			if (tpens && (tpens & (1 << pen))) continue;
+			drow[dx] = pal[pen];
+		}
+	}
+}
+#endif
+
 
 
 /*------------------------------------------------------------------------
@@ -1248,7 +1282,8 @@ static void scrollh_delete_sprite(void)
 
 
 /*------------------------------------------------------------------------
-	SCROLLHƒLƒƒƒbƒVƒ…‚©‚çŽw’è‚µ‚½“§‰ßƒyƒ“‚ÌƒeƒNƒXƒ`ƒƒ‚ðíœ
+	SCROLLHƒLƒƒƒbƒVƒ
+‚©‚çŽw’è‚µ‚½“§‰ßƒyƒ“‚ÌƒeƒNƒXƒ`ƒƒ‚ðíœ
 ------------------------------------------------------------------------*/
 
 static void scrollh_delete_sprite_tpens(UINT16 tpens)
@@ -1560,6 +1595,12 @@ void blit_update_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 void blit_draw_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 {
+#ifdef PLATFORM_SDL
+	UINT16 *pal = &video_palette[(attr & 0x1f) << 4];
+	blit_tile_generic(&gfx_object[code << 7], 16, 16, (attr & 0x20) != 0, (attr & 0x40) != 0, pal, 0, x, y);
+	return;
+#endif
+
 	if ((x > 47 && x < 448) && (y > 0 && y < 239))
 	{
 		INT16 idx;
@@ -1624,6 +1665,10 @@ void blit_draw_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 void blit_finish_object(void)
 {
+#ifdef PLATFORM_SDL
+	return;
+#endif
+
 	int i, total_sprites = 0;
 	UINT8 color = 0;
 	struct Vertex *vertices, *vertices_tmp;
@@ -1701,6 +1746,12 @@ void blit_update_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 gfxset)
 {
+#ifdef PLATFORM_SDL
+	UINT16 *pal = &video_palette[((attr & 0x1f) + 32) << 4];
+	blit_tile_generic(&gfx_scroll1[(code << 6) + (gfxset << 2)], 8, 8, (attr & 0x20) != 0, (attr & 0x40) != 0, pal, 0, x, y);
+	return;
+#endif
+
 	INT16 idx;
 	struct Vertex *vertices;
 	UINT32 key = MAKE_KEY(code, attr);
@@ -1762,6 +1813,10 @@ void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 gfxset
 
 void blit_finish_scroll1(void)
 {
+#ifdef PLATFORM_SDL
+	return;
+#endif
+
 	struct Vertex *vertices;
 
 	if (clut0_num + clut1_num == 0) return;
@@ -1805,6 +1860,12 @@ void blit_finish_scroll1(void)
 
 void blit_set_clip_scroll2(INT16 min_y, INT16 max_y)
 {
+#ifdef PLATFORM_SDL
+	blit_draw_scroll2  = blit_draw_scroll2_software;
+	blit_draw_scroll2h = blit_draw_scroll2h_software;
+	return;
+#endif
+
 	scroll2_min_y = min_y;
 	scroll2_max_y = max_y + 1;
 
@@ -1962,6 +2023,10 @@ static void blit_draw_scroll2_hardware(INT16 x, INT16 y, UINT32 code, UINT16 att
 
 void blit_finish_scroll2(void)
 {
+#ifdef PLATFORM_SDL
+	return;
+#endif
+
 	struct Vertex *vertices;
 
 	if (clut0_num + clut1_num == 0) return;
@@ -2026,6 +2091,12 @@ void blit_update_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 void blit_draw_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 {
+#ifdef PLATFORM_SDL
+	UINT16 *pal = &video_palette[((attr & 0x1f) + 96) << 4];
+	blit_tile_generic(&gfx_scroll3[code << 9], 32, 32, (attr & 0x20) != 0, (attr & 0x40) != 0, pal, 0, x, y);
+	return;
+#endif
+
 	INT16 idx;
 	struct Vertex *vertices;
 	UINT32 key = MAKE_KEY(code, attr);
@@ -2096,6 +2167,10 @@ void blit_draw_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 
 void blit_finish_scroll3(void)
 {
+#ifdef PLATFORM_SDL
+	return;
+#endif
+
 	struct Vertex *vertices;
 
 	if (clut0_num + clut1_num == 0) return;
@@ -2139,6 +2214,13 @@ void blit_finish_scroll3(void)
 
 void blit_draw_scroll1h(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens, UINT16 gfxset)
 {
+#ifdef PLATFORM_SDL
+	UINT16 *pal = &video_palette[((attr & 0x1f) + 32) << 4];
+	UINT16 mask = (tpens == 0x7fff) ? 0 : tpens;
+	blit_tile_generic(&gfx_scroll1[(code << 6) + (gfxset << 2)], 8, 8, (attr & 0x20) != 0, (attr & 0x40) != 0, pal, mask, x, y);
+	return;
+#endif
+
 	INT16 idx;
 	struct Vertex *vertices;
 	UINT32 key = MAKE_HIGH_KEY(code, attr);
@@ -2386,6 +2468,13 @@ void blit_finish_scroll2h(void)
 
 void blit_draw_scroll3h(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens)
 {
+#ifdef PLATFORM_SDL
+	UINT16 *pal = &video_palette[((attr & 0x1f) + 96) << 4];
+	UINT16 mask = (tpens == 0x7fff) ? 0 : tpens;
+	blit_tile_generic(&gfx_scroll3[code << 9], 32, 32, (attr & 0x20) != 0, (attr & 0x40) != 0, pal, mask, x, y);
+	return;
+#endif
+
 	INT16 idx;
 	struct Vertex *vertices;
 	UINT32 key = MAKE_HIGH_KEY(code, attr);

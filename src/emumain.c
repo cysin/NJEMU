@@ -67,6 +67,7 @@ static int frames_per_second;
 static int snap_no = -1;
 
 static char fatal_error_message[256];
+static TICKER last_timing_log;
 
 static const UINT8 skiptable[FRAMESKIP_LEVELS][FRAMESKIP_LEVELS] =
 {
@@ -83,6 +84,26 @@ static const UINT8 skiptable[FRAMESKIP_LEVELS][FRAMESKIP_LEVELS] =
 	{ 0,1,1,1,1,1,0,1,1,1,1,1 },
 	{ 0,1,1,1,1,1,1,1,1,1,1,1 }
 };
+
+static void log_timing_stats(int skipped_last_frame)
+{
+	if (!njemu_debug)
+		return;
+
+	TICKER now = ticker();
+
+	if (last_timing_log && (now - last_timing_log) < TICKS_PER_SEC)
+		return;
+
+	last_timing_log = now;
+
+	fprintf(stderr, "[timing] fps=%d speed=%d%% frameskip=%d (%s) skipped=%d\n",
+		frames_per_second,
+		game_speed_percent,
+		frameskip,
+		option_autoframeskip ? "auto" : "fixed",
+		skipped_last_frame);
+}
 
 
 /******************************************************************************
@@ -238,19 +259,17 @@ void update_screen(void)
 		{
 			TICKER target = this_frame_base + (int)((float)frameskip_counter * PSP_TICKS_PER_FRAME);
 
-			if (option_vsync)
+			if (option_vsync && curr < target - 100)
 			{
-				if (curr < target - 100)
-				{
-					video_flip_screen(1);
-					flip = 1;
-				}
+				video_flip_screen(1);
+				flip = 1;
 			}
 
-			while (curr < target)
-				curr = ticker();
+			platform_wait_until(target);
+			curr = ticker();
 		}
-		if (!flip) video_flip_screen(0);
+		if (!flip)
+			video_flip_screen(0);
 
 		rendered_frames_since_last_fps++;
 
@@ -303,6 +322,8 @@ void update_screen(void)
 		}
 	}
 
+	log_timing_stats(skipped_it);
+
 	frameskip_counter = (frameskip_counter + 1) % FRAMESKIP_LEVELS;
 }
 
@@ -320,7 +341,12 @@ void fatalerror(const char *text, ...)
 	va_end(arg);
 
 	fatal_error = 1;
+#ifdef PLATFORM_SDL
+	fprintf(stderr, "[fatal] %s\n", fatal_error_message);
+	Loop = LOOP_EXIT;
+#else
 	Loop = LOOP_BROWSER;
+#endif
 }
 
 
@@ -330,6 +356,15 @@ void fatalerror(const char *text, ...)
 
 void show_fatal_error(void)
 {
+#ifdef PLATFORM_SDL
+	if (fatal_error)
+	{
+		fprintf(stderr, "[fatal] %s\n", fatal_error_message);
+		fatal_error = 0;
+	}
+	return;
+#endif
+
 	if (fatal_error)
 	{
 		int sx, sy, ex, ey;

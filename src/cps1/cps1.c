@@ -9,6 +9,13 @@
 #include "cps1.h"
 
 
+static void dbg_log(const char *tag)
+{
+	if (njemu_debug)
+		msg_printf("[cps1] %s", tag);
+}
+
+
 /******************************************************************************
 	¥í©`¥«¥ëévÊý
 ******************************************************************************/
@@ -130,6 +137,7 @@ static void cps1_exit(void)
 	show_exit_screen();
 }
 
+#ifdef CHEAT
 /*--------------------------------------------------------
 	cheats
 --------------------------------------------------------*/
@@ -137,7 +145,7 @@ static void cps1_exit(void)
 extern int cheat_num;
 extern gamecheat_t* gamecheat[];
 
-static void apply_cheat()
+static void apply_cheat(void)
 {
 	gamecheat_t *a_cheat = NULL;
 	cheat_option_t *a_cheat_option = NULL;
@@ -169,6 +177,9 @@ static void apply_cheat()
 		}
     }
 }
+#else
+static void apply_cheat(void) { }
+#endif
 
 /*--------------------------------------------------------
 	CPS1¥¨¥ß¥å¥ì©`¥·¥ç¥óŒgÐÐ
@@ -176,6 +187,7 @@ static void apply_cheat()
 
 static void cps1_run(void)
 {
+	int frame_count_debug = 0;
 	while (Loop >= LOOP_RESET)
 	{
 		cps1_reset();
@@ -191,17 +203,27 @@ static void cps1_run(void)
 
 				autoframeskip_reset();
 			}
-			
-			apply_cheat(); //davex cheat
+			if (njemu_debug) msg_printf("[cps1] frame %d", frame_count_debug);
+			apply_cheat();
+			if (njemu_debug) msg_printf("[cps1] timer_update_cpu");
 			timer_update_cpu();
+			if (njemu_debug) msg_printf("[cps1] update_screen");
 			update_screen();
+			if (njemu_debug) msg_printf("[cps1] update_inputport");
 			update_inputport();
+			frame_count_debug++;
+			if (njemu_debug && frame_count_debug > 3)
+			{
+				Loop = LOOP_EXIT;
+				break;
+			}
 		}
 
 		video_clear_screen();
 		sound_mute(1);
 	}
 }
+
 
 
 /******************************************************************************
@@ -226,14 +248,19 @@ void cps1_main(void)
 
 		video_clear_screen();
 
+		dbg_log("memory_init");
 		if (memory_init())
 		{
+			dbg_log("sound_init");
 			if (sound_init())
 			{
+				dbg_log("input_init");
 				if (input_init())
 				{
+					dbg_log("cps1_init");
 					if (cps1_init())
 					{
+						dbg_log("run");
 						cps1_run();
 					}
 					cps1_exit();
@@ -246,3 +273,4 @@ void cps1_main(void)
 		show_fatal_error();
 	}
 }
+

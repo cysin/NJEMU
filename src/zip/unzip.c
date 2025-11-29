@@ -4,7 +4,11 @@
    Read unzip.h for more info
 */
 
+#ifdef PLATFORM_SDL
+#include "platform/platform.h"
+#else
 #include "psp/psp.h"
+#endif
 #include "zlib.h"
 #include "unzip.h"
 

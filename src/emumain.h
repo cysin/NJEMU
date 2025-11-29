@@ -9,7 +9,11 @@
 #ifndef EMUMAIN_H
 #define EMUMAIN_H
 
+#ifdef PLATFORM_SDL
+#include "platform/platform.h"
+#else
 #include "psp/psp.h"
+#endif
 #include "include/cpuintrf.h"
 #include "include/memory.h"
 #include "zip/zfile.h"

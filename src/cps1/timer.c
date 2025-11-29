@@ -292,6 +292,11 @@ void timer_update_cpu(void)
 	int i;
 	float time;
 
+
+#ifdef PLATFORM_SDL
+	if (njemu_debug) msg_printf("[cps1] timer_update_cpu start");
+#endif
+
 	frame_base = 0;
 	timer_left = time_slice;
 
@@ -302,6 +307,10 @@ void timer_update_cpu(void)
 		timer_ticks = timer_left;
 		time = base_time + frame_base;
 
+#ifdef PLATFORM_SDL
+		if (njemu_debug) msg_printf("[cps1] timer loop left=%f base=%f", (double)timer_left, (double)time);
+#endif
+
 		for (i = 0; i < MAX_TIMER; i++)
 		{
 			if (timer[i].enable)
@@ -309,6 +318,9 @@ void timer_update_cpu(void)
 				if (timer[i].expire - time <= 0)
 				{
 					timer[i].enable = 0;
+#ifdef PLATFORM_SDL
+					if (njemu_debug) msg_printf("[cps1] timer cb %d", i);
+#endif
 					timer[i].callback(timer[i].param);
 				}
 			}
@@ -320,7 +332,12 @@ void timer_update_cpu(void)
 		}
 
 		for (i = 0; i < MAX_CPU; i++)
+		{
+#ifdef PLATFORM_SDL
+			if (njemu_debug) msg_printf("[cps1] cpu_execute %d %f usec", i, (double)timer_ticks);
+#endif
 			cpu_execute(i);
+		}
 
 		frame_base += timer_ticks;
 		timer_left -= timer_ticks;

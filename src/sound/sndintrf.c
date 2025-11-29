@@ -239,7 +239,13 @@ int sound_init(void)
 	samples_left_over  -= samples_this_update;
 #endif
 
-	return sound_thread_start();
+	if (!sound_thread_start())
+	{
+		fatalerror("SDL audio init failed");
+		return 0;
+	}
+
+	return 1;
 }
 
 

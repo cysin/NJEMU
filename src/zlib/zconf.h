@@ -9,7 +9,11 @@
 #define ZCONF_H
 
 #ifdef PSP
+#ifdef PLATFORM_SDL
+#include "platform/platform.h"
+#else
 #include "psp/psp.h"
+#endif
 #endif
 
 /*
