@@ -2,15 +2,14 @@
 
 	sprite.c
 
-	CPS1 ƒXƒvƒ‰ƒCƒgƒ}ƒl[ƒWƒƒ
+	CPS1 ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½}ï¿½lï¿½[ï¿½Wï¿½ï¿½
 
 ******************************************************************************/
 
 #include "cps1.h"
 
-
 /******************************************************************************
-	’è”/ƒ}ƒNƒ“™
+	ï¿½è”/ï¿½}ï¿½Nï¿½ï¿½ï¿½ï¿½
 ******************************************************************************/
 
 #define TEXTURE_HEIGHT		512
@@ -18,11 +17,14 @@
 
 #define MAKE_KEY(code, attr)		(code | ((attr & 0x0f) << 28))
 #define MAKE_HIGH_KEY(code, attr)	(code | ((attr & 0x19f) << 16))
+#ifdef PLATFORM_SDL
+#define PSP_UNCACHE_PTR(p)		(p)
+#else
 #define PSP_UNCACHE_PTR(p)			(((UINT32)(p)) | 0x40000000)
-
+#endif
 
 /******************************************************************************
-	ƒvƒƒgƒ^ƒCƒv
+	ï¿½vï¿½ï¿½ï¿½gï¿½^ï¿½Cï¿½v
 ******************************************************************************/
 
 void (*blit_draw_scroll2)(INT16 x, INT16 y, UINT32 code, UINT16 attr);
@@ -33,9 +35,8 @@ void (*blit_draw_scroll2h)(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tp
 static void blit_draw_scroll2h_software(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens);
 static void blit_draw_scroll2h_hardware(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens);
 
-
 /******************************************************************************
-	ƒ[ƒJƒ‹•Ï”/\‘¢‘Ì
+	ï¿½ï¿½ï¿½[ï¿½Jï¿½ï¿½ï¿½Ïï¿½/ï¿½\ï¿½ï¿½ï¿½ï¿½
 ******************************************************************************/
 
 typedef struct sprite_t
@@ -57,12 +58,12 @@ static RECT cps_src_clip = { 64, 16, 64 + 384, 16 + 224 };
 
 static RECT cps_clip[6] =
 {
-	{ 48, 24, 48 + 384, 24 + 224 },	// option_stretch = 0  (384x224)
-	{ 60,  1, 60 + 360,  1 + 270 },	// option_stretch = 1  (360x270  4:3)
-	{ 48,  1, 48 + 384,  1 + 270 },	// option_stretch = 2  (384x270 24:17)
-	{ 7,   0,   7+ 466,      272 },	// option_stretch = 3  (466x272 12:7)
-	{ 0,   1, 480,       1 + 270 },	// option_stretch = 4  (480x270 16:9)
-	{ 138, 0, 138 + 204,     272 }  	// option_stretch = 5  (204x272 3:4 vertical)
+	{ 48, 24, 48 + 384, 24 + 224 },	// option_stretch = 0 (384x224)
+	{ 60, 1, 60 + 360, 1 + 270 },	// option_stretch = 1 (360x270 4:3)
+	{ 48, 1, 48 + 384, 1 + 270 },	// option_stretch = 2 (384x270 24:17)
+	{ 7,  0,  7+ 466,   272 },	// option_stretch = 3 (466x272 12:7)
+	{ 0,  1, 480,    1 + 270 },	// option_stretch = 4 (480x270 16:9)
+	{ 138, 0, 138 + 204,   272 } 	// option_stretch = 5 (204x272 3:4 vertical)
 };
 
 static INT16 scroll2_min_y;
@@ -73,16 +74,14 @@ static INT16 scroll2_ey;
 static UINT8 *pen_usage;
 static UINT16 *scrbitmap;
 
-
 /*------------------------------------------------------------------------
-	ƒpƒŒƒbƒg
+	ï¿½pï¿½ï¿½ï¿½bï¿½g
 ------------------------------------------------------------------------*/
 
 static UINT8 ALIGN_DATA palette_dirty_marks[256];
 
-
 /*------------------------------------------------------------------------
-	OBJECT: ƒLƒƒƒ‰ƒNƒ^“™
+	OBJECT: ï¿½Lï¿½ï¿½ï¿½ï¿½ï¿½Nï¿½^ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 #define OBJECT_HASH_SIZE		0x200
@@ -98,9 +97,8 @@ static UINT8 *gfx_object;
 static UINT8 *tex_object;
 static UINT16 object_texture_num;
 
-
 /*------------------------------------------------------------------------
-	SCROLL1: ƒXƒNƒ[ƒ‹–Ê1(ƒeƒLƒXƒg“™)
+	SCROLL1: ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½1(ï¿½eï¿½Lï¿½Xï¿½gï¿½ï¿½)
 ------------------------------------------------------------------------*/
 
 #define SCROLL1_HASH_SIZE		0x200
@@ -116,9 +114,8 @@ static UINT8 *gfx_scroll1;
 static UINT8 *tex_scroll1;
 static UINT16 scroll1_texture_num;
 
-
 /*------------------------------------------------------------------------
-	SCROLL2: ƒXƒNƒ[ƒ‹–Ê2
+	SCROLL2: ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½2
 ------------------------------------------------------------------------*/
 
 #define SCROLL2_HASH_SIZE		0x100
@@ -134,9 +131,8 @@ static UINT8 *gfx_scroll2;
 static UINT8 *tex_scroll2;
 static UINT16 scroll2_texture_num;
 
-
 /*------------------------------------------------------------------------
-	SCROLL3: ƒXƒNƒ[ƒ‹–Ê3
+	SCROLL3: ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½3
 ------------------------------------------------------------------------*/
 
 #define SCROLL3_HASH_SIZE		0x40
@@ -152,9 +148,8 @@ static UINT8 *gfx_scroll3;
 static UINT8 *tex_scroll3;
 static UINT16 scroll3_texture_num;
 
-
 /*------------------------------------------------------------------------
-	SCROLLH: ƒXƒNƒ[ƒ‹–Ê (ƒnƒCƒvƒ‰ƒCƒIƒŠƒeƒB)
+	SCROLLH: ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ (ï¿½nï¿½Cï¿½vï¿½ï¿½ï¿½Cï¿½Iï¿½ï¿½ï¿½eï¿½B)
 ------------------------------------------------------------------------*/
 
 #define SCROLLH_HASH_SIZE		0x200
@@ -177,15 +172,14 @@ static UINT16 *tex_scrollh;
 static struct Vertex ALIGN_DATA vertices_scrollh[SCROLLH_MAX_SPRITES * 2];
 static UINT16 scrollh_num;
 static UINT16 scrollh_texture_num;
-static UINT8  scrollh_texture_clear;
-static UINT8  scrollh_layer_number;
+static UINT8 scrollh_texture_clear;
+static UINT8 scrollh_layer_number;
 static UINT8 scroll1_palette_is_dirty;
 static UINT8 scroll2_palette_is_dirty;
 static UINT8 scroll3_palette_is_dirty;
 
-
 /*------------------------------------------------------------------------
-	’¸“_ƒf[ƒ^
+	ï¿½ï¿½ï¿½_ï¿½fï¿½[ï¿½^
 ------------------------------------------------------------------------*/
 
 static OBJECT ALIGN_DATA vertices_object[OBJECT_MAX_SPRITES];
@@ -195,9 +189,8 @@ static UINT16 object_index;
 
 static struct Vertex ALIGN_DATA vertices_scroll[2][SCROLL1_MAX_SPRITES * 2];
 
-
 /*------------------------------------------------------------------------
-	ƒJƒ‰[ƒ‹ƒbƒNƒAƒbƒvƒe[ƒuƒ‹
+	ï¿½Jï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½bï¿½Nï¿½Aï¿½bï¿½vï¿½eï¿½[ï¿½uï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 static UINT16 *clut;
@@ -212,22 +205,20 @@ static const UINT32 ALIGN_DATA color_table[16] =
 	0xc0c0c0c0, 0xd0d0d0d0, 0xe0e0e0e0, 0xf0f0f0f0
 };
 
-
 /*------------------------------------------------------------------------
-	'swizzle'ƒeƒNƒXƒ`ƒƒƒAƒhƒŒƒXŒvZƒe[ƒuƒ‹ (8bitƒJƒ‰[)
+	'swizzle'ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½Aï¿½hï¿½ï¿½ï¿½Xï¿½vï¿½Zï¿½eï¿½[ï¿½uï¿½ï¿½ (8bitï¿½Jï¿½ï¿½ï¿½[)
 ------------------------------------------------------------------------*/
 
 static const int ALIGN_DATA swizzle_table_8bit[32] =
 {
-	   0, 16, 16, 16, 16, 16, 16, 16,
+	  0, 16, 16, 16, 16, 16, 16, 16,
 	3984, 16, 16, 16, 16, 16, 16, 16,
 	3984, 16, 16, 16, 16, 16, 16, 16,
 	3984, 16, 16, 16, 16, 16, 16, 16
 };
 
-
 /******************************************************************************
-	SCROLL2 ƒ\ƒtƒgƒEƒFƒA•`‰æ
+	SCROLL2 ï¿½\ï¿½tï¿½gï¿½Eï¿½Fï¿½Aï¿½`ï¿½ï¿½
 ******************************************************************************/
 
 static void drawgfx16_16x16(UINT32 *src, UINT16 *dst, UINT16 *pal, int lines);
@@ -265,7 +256,6 @@ static void ALIGN_DATA (*drawgfx16h[4])(UINT32 *src, UINT16 *dst, UINT16 *pal, i
 	drawgfx16h_16x16_flipxy
 };
 
-
 /*------------------------------------------------------------------------
 	16bpp 16x16
 ------------------------------------------------------------------------*/
@@ -280,9 +270,9 @@ static void drawgfx16_16x16(UINT32 *src, UINT16 *dst, UINT16 *pal, int lines)
 		mask = ~tile;
 		if (mask)
 		{
-			if (mask & 0x000f) dst[ 0] = pal[(tile >>  0) & 0x0f];
-			if (mask & 0x00f0) dst[ 4] = pal[(tile >>  4) & 0x0f];
-			if (mask & 0x0f00) dst[ 1] = pal[(tile >>  8) & 0x0f];
+			if (mask & 0x000f) dst[ 0] = pal[(tile >> 0) & 0x0f];
+			if (mask & 0x00f0) dst[ 4] = pal[(tile >> 4) & 0x0f];
+			if (mask & 0x0f00) dst[ 1] = pal[(tile >> 8) & 0x0f];
 			if (mask & 0xf000) dst[ 5] = pal[(tile >> 12) & 0x0f];
 			mask >>= 16;
 			if (mask & 0x000f) dst[ 2] = pal[(tile >> 16) & 0x0f];
@@ -294,9 +284,9 @@ static void drawgfx16_16x16(UINT32 *src, UINT16 *dst, UINT16 *pal, int lines)
 		mask = ~tile;
 		if (mask)
 		{
-			if (mask & 0x000f) dst[ 8] = pal[(tile >>  0) & 0x0f];
-			if (mask & 0x00f0) dst[12] = pal[(tile >>  4) & 0x0f];
-			if (mask & 0x0f00) dst[ 9] = pal[(tile >>  8) & 0x0f];
+			if (mask & 0x000f) dst[ 8] = pal[(tile >> 0) & 0x0f];
+			if (mask & 0x00f0) dst[12] = pal[(tile >> 4) & 0x0f];
+			if (mask & 0x0f00) dst[ 9] = pal[(tile >> 8) & 0x0f];
 			if (mask & 0xf000) dst[13] = pal[(tile >> 12) & 0x0f];
 			mask >>= 16;
 			if (mask & 0x000f) dst[10] = pal[(tile >> 16) & 0x0f];
@@ -319,9 +309,9 @@ static void drawgfx16_16x16_flipx(UINT32 *src, UINT16 *dst, UINT16 *pal, int lin
 		mask = ~tile;
 		if (mask)
 		{
-			if (mask & 0x000f) dst[15] = pal[(tile >>  0) & 0x0f];
-			if (mask & 0x00f0) dst[11] = pal[(tile >>  4) & 0x0f];
-			if (mask & 0x0f00) dst[14] = pal[(tile >>  8) & 0x0f];
+			if (mask & 0x000f) dst[15] = pal[(tile >> 0) & 0x0f];
+			if (mask & 0x00f0) dst[11] = pal[(tile >> 4) & 0x0f];
+			if (mask & 0x0f00) dst[14] = pal[(tile >> 8) & 0x0f];
 			if (mask & 0xf000) dst[10] = pal[(tile >> 12) & 0x0f];
 			mask >>= 16;
 			if (mask & 0x000f) dst[13] = pal[(tile >> 16) & 0x0f];
@@ -333,9 +323,9 @@ static void drawgfx16_16x16_flipx(UINT32 *src, UINT16 *dst, UINT16 *pal, int lin
 		mask = ~tile;
 		if (mask)
 		{
-			if (mask & 0x000f) dst[ 7] = pal[(tile >>  0) & 0x0f];
-			if (mask & 0x00f0) dst[ 3] = pal[(tile >>  4) & 0x0f];
-			if (mask & 0x0f00) dst[ 6] = pal[(tile >>  8) & 0x0f];
+			if (mask & 0x000f) dst[ 7] = pal[(tile >> 0) & 0x0f];
+			if (mask & 0x00f0) dst[ 3] = pal[(tile >> 4) & 0x0f];
+			if (mask & 0x0f00) dst[ 6] = pal[(tile >> 8) & 0x0f];
 			if (mask & 0xf000) dst[ 2] = pal[(tile >> 12) & 0x0f];
 			mask >>= 16;
 			if (mask & 0x000f) dst[ 5] = pal[(tile >> 16) & 0x0f];
@@ -358,9 +348,9 @@ static void drawgfx16_16x16_flipy(UINT32 *src, UINT16 *dst, UINT16 *pal, int lin
 		mask = ~tile;
 		if (mask)
 		{
-			if (mask & 0x000f) dst[ 0] = pal[(tile >>  0) & 0x0f];
-			if (mask & 0x00f0) dst[ 4] = pal[(tile >>  4) & 0x0f];
-			if (mask & 0x0f00) dst[ 1] = pal[(tile >>  8) & 0x0f];
+			if (mask & 0x000f) dst[ 0] = pal[(tile >> 0) & 0x0f];
+			if (mask & 0x00f0) dst[ 4] = pal[(tile >> 4) & 0x0f];
+			if (mask & 0x0f00) dst[ 1] = pal[(tile >> 8) & 0x0f];
 			if (mask & 0xf000) dst[ 5] = pal[(tile >> 12) & 0x0f];
 			mask >>= 16;
 			if (mask & 0x000f) dst[ 2] = pal[(tile >> 16) & 0x0f];
@@ -372,9 +362,9 @@ static void drawgfx16_16x16_flipy(UINT32 *src, UINT16 *dst, UINT16 *pal, int lin
 		mask = ~tile;
 		if (mask)
 		{
-			if (mask & 0x000f) dst[ 8] = pal[(tile >>  0) & 0x0f];
-			if (mask & 0x00f0) dst[12] = pal[(tile >>  4) & 0x0f];
-			if (mask & 0x0f00) dst[ 9] = pal[(tile >>  8) & 0x0f];
+			if (mask & 0x000f) dst[ 8] = pal[(tile >> 0) & 0x0f];
+			if (mask & 0x00f0) dst[12] = pal[(tile >> 4) & 0x0f];
+			if (mask & 0x0f00) dst[ 9] = pal[(tile >> 8) & 0x0f];
 			if (mask & 0xf000) dst[13] = pal[(tile >> 12) & 0x0f];
 			mask >>= 16;
 			if (mask & 0x000f) dst[10] = pal[(tile >> 16) & 0x0f];
@@ -397,9 +387,9 @@ static void drawgfx16_16x16_flipxy(UINT32 *src, UINT16 *dst, UINT16 *pal, int li
 		mask = ~tile;
 		if (mask)
 		{
-			if (mask & 0x000f) dst[15] = pal[(tile >>  0) & 0x0f];
-			if (mask & 0x00f0) dst[11] = pal[(tile >>  4) & 0x0f];
-			if (mask & 0x0f00) dst[14] = pal[(tile >>  8) & 0x0f];
+			if (mask & 0x000f) dst[15] = pal[(tile >> 0) & 0x0f];
+			if (mask & 0x00f0) dst[11] = pal[(tile >> 4) & 0x0f];
+			if (mask & 0x0f00) dst[14] = pal[(tile >> 8) & 0x0f];
 			if (mask & 0xf000) dst[10] = pal[(tile >> 12) & 0x0f];
 			mask >>= 16;
 			if (mask & 0x000f) dst[13] = pal[(tile >> 16) & 0x0f];
@@ -411,9 +401,9 @@ static void drawgfx16_16x16_flipxy(UINT32 *src, UINT16 *dst, UINT16 *pal, int li
 		mask = ~tile;
 		if (mask)
 		{
-			if (mask & 0x000f) dst[ 7] = pal[(tile >>  0) & 0x0f];
-			if (mask & 0x00f0) dst[ 3] = pal[(tile >>  4) & 0x0f];
-			if (mask & 0x0f00) dst[ 6] = pal[(tile >>  8) & 0x0f];
+			if (mask & 0x000f) dst[ 7] = pal[(tile >> 0) & 0x0f];
+			if (mask & 0x00f0) dst[ 3] = pal[(tile >> 4) & 0x0f];
+			if (mask & 0x0f00) dst[ 6] = pal[(tile >> 8) & 0x0f];
 			if (mask & 0xf000) dst[ 2] = pal[(tile >> 12) & 0x0f];
 			mask >>= 16;
 			if (mask & 0x000f) dst[ 5] = pal[(tile >> 16) & 0x0f];
@@ -426,9 +416,10 @@ static void drawgfx16_16x16_flipxy(UINT32 *src, UINT16 *dst, UINT16 *pal, int li
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	16bpp 16x16 (“§‰ß‚È‚µ)
+	#endif
+
+16bpp 16x16 (ï¿½ï¿½ï¿½ß‚È‚ï¿½)
 ------------------------------------------------------------------------*/
 
 static void drawgfx16_16x16_opaque(UINT32 *src, UINT16 *dst, UINT16 *pal, int lines)
@@ -552,41 +543,95 @@ static void drawgfx16_16x16_flipxy_opaque(UINT32 *src, UINT16 *dst, UINT16 *pal,
 ------------------------------------------------------------------------*/
 
 #ifdef PLATFORM_SDL
-static UINT8 get_tile_pen(const UINT8 *src, int index)
+
+/*
+ * CPS1 graphics format decoding:
+ * Graphics are stored in interleaved 4bpp format.
+ * For 16-wide tiles: 8 bytes per row (2 x UINT32)
+ *   Word 0 bits 0-3,4-7,8-11,12-15,16-19,20-23,24-27,28-31 = pixels 0,4,1,5,2,6,3,7
+ *   Word 1 bits 0-3,4-7,8-11,12-15,16-19,20-23,24-27,28-31 = pixels 8,12,9,13,10,14,11,15
+ * For 8-wide tiles: 4 bytes per row (1 x UINT32)
+ *   Word 0 bits 0-3,4-7,8-11,12-15,16-19,20-23,24-27,28-31 = pixels 0,4,1,5,2,6,3,7
+ * For 32-wide tiles: 16 bytes per row (4 x UINT32)
+ *   Follows same interleaving pattern for each 8-pixel group
+ */
+
+/* Lookup table to decode pixel index -> nibble position within a UINT32 word */
+/* For pixel X in 0-7 range: maps to nibble position */
+static const int cps1_pixel_to_shift[8] = { 0, 8, 16, 24, 4, 12, 20, 28 };
+
+static UINT8 get_cps1_pen(const UINT8 *src, int width, int px, int py)
 {
-	UINT8 byte = src[index >> 1];
-	return (index & 1) ? (byte >> 4) & 0x0f : byte & 0x0f;
+	/*
+	 * CPS1 row strides:
+	 * - 8x8 tiles: 8 bytes per row (stored with padding/alignment)
+	 * - 16x16 tiles: 8 bytes per row
+	 * - 32x32 tiles: 16 bytes per row
+	 */
+	int bytes_per_row;
+	if (width == 8)
+		bytes_per_row = 8;   /* 8x8 tiles have 8-byte rows (with 4 bytes actual data) */
+	else if (width == 16)
+		bytes_per_row = 8;   /* 16x16 tiles have 8-byte rows */
+	else /* width == 32 */
+		bytes_per_row = 16;  /* 32x32 tiles have 16-byte rows */
+
+	const UINT8 *row = src + py * bytes_per_row;
+
+	/* Which 8-pixel group is this pixel in? */
+	int group = px / 8;
+	int pixel_in_group = px % 8;
+
+	/* Each group is 4 bytes (1 UINT32) */
+	const UINT32 *word_ptr = (const UINT32 *)(row + group * 4);
+	UINT32 word = *word_ptr;
+
+	/* Get the nibble using the lookup table */
+	int shift = cps1_pixel_to_shift[pixel_in_group];
+	return (word >> shift) & 0x0f;
 }
 
 static void blit_tile_generic(const UINT8 *src, int width, int height, int flipx, int flipy, UINT16 *pal, UINT16 tpens, int x, int y)
 {
+	static int call_count = 0;
+
+	if (call_count < 5)
+	{
+		fprintf(stderr, "[blit_tile] call %d: x=%d y=%d w=%d h=%d pal=%p scrbitmap=%p\n",
+			call_count, x, y, width, height, (void*)pal, (void*)scrbitmap);
+	}
+	call_count++;
+
 	int startx = 0, starty = 0, endx = width, endy = height;
+
 	if (x <= -width || x >= SCR_WIDTH || y <= -height || y >= SCR_HEIGHT) return;
 	if (x < 0) startx = -x;
 	if (y < 0) starty = -y;
 	if (x + endx > SCR_WIDTH) endx = SCR_WIDTH - x;
 	if (y + endy > SCR_HEIGHT) endy = SCR_HEIGHT - y;
+
 	for (int dy = starty; dy < endy; dy++)
 	{
 		int sy = flipy ? (height - 1 - dy) : dy;
-		const UINT8 *srow = src + (sy * width) / 2;
 		UINT16 *drow = scrbitmap + (y + dy) * BUF_WIDTH + x;
+
 		for (int dx = startx; dx < endx; dx++)
 		{
 			int sx = flipx ? (width - 1 - dx) : dx;
-			UINT8 pen = get_tile_pen(srow, sx);
+			UINT8 pen = get_cps1_pen(src, width, sx, sy);
+
 			if (pen == 0) continue;
 			if (tpens && (tpens & (1 << pen))) continue;
+
 			drow[dx] = pal[pen];
 		}
 	}
 }
+
 #endif
 
-
-
 /*------------------------------------------------------------------------
-	16bpp 16x16 (ƒnƒCƒŒƒCƒ„[)
+	16bpp 16x16 (ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[)
 ------------------------------------------------------------------------*/
 
 static void drawgfx16h_16x16(UINT32 *src, UINT16 *dst, UINT16 *pal, int lines, UINT16 tpens)
@@ -599,9 +644,9 @@ static void drawgfx16h_16x16(UINT32 *src, UINT16 *dst, UINT16 *pal, int lines, U
 		tile = src[0];
 		if (~tile)
 		{
-			col = (tile >>  0) & 0x0f; if (tpens & (1 << col)) dst[ 0] = pal[col];
-			col = (tile >>  4) & 0x0f; if (tpens & (1 << col)) dst[ 4] = pal[col];
-			col = (tile >>  8) & 0x0f; if (tpens & (1 << col)) dst[ 1] = pal[col];
+			col = (tile >> 0) & 0x0f; if (tpens & (1 << col)) dst[ 0] = pal[col];
+			col = (tile >> 4) & 0x0f; if (tpens & (1 << col)) dst[ 4] = pal[col];
+			col = (tile >> 8) & 0x0f; if (tpens & (1 << col)) dst[ 1] = pal[col];
 			col = (tile >> 12) & 0x0f; if (tpens & (1 << col)) dst[ 5] = pal[col];
 			col = (tile >> 16) & 0x0f; if (tpens & (1 << col)) dst[ 2] = pal[col];
 			col = (tile >> 20) & 0x0f; if (tpens & (1 << col)) dst[ 6] = pal[col];
@@ -611,9 +656,9 @@ static void drawgfx16h_16x16(UINT32 *src, UINT16 *dst, UINT16 *pal, int lines, U
 		tile = src[1];
 		if (~tile)
 		{
-			col = (tile >>  0) & 0x0f; if (tpens & (1 << col)) dst[ 8] = pal[col];
-			col = (tile >>  4) & 0x0f; if (tpens & (1 << col)) dst[12] = pal[col];
-			col = (tile >>  8) & 0x0f; if (tpens & (1 << col)) dst[ 9] = pal[col];
+			col = (tile >> 0) & 0x0f; if (tpens & (1 << col)) dst[ 8] = pal[col];
+			col = (tile >> 4) & 0x0f; if (tpens & (1 << col)) dst[12] = pal[col];
+			col = (tile >> 8) & 0x0f; if (tpens & (1 << col)) dst[ 9] = pal[col];
 			col = (tile >> 12) & 0x0f; if (tpens & (1 << col)) dst[13] = pal[col];
 			col = (tile >> 16) & 0x0f; if (tpens & (1 << col)) dst[10] = pal[col];
 			col = (tile >> 20) & 0x0f; if (tpens & (1 << col)) dst[14] = pal[col];
@@ -635,9 +680,9 @@ static void drawgfx16h_16x16_flipx(UINT32 *src, UINT16 *dst, UINT16 *pal, int li
 		tile = src[0];
 		if (~tile)
 		{
-			col = (tile >>  0) & 0x0f; if (tpens & (1 << col)) dst[15] = pal[col];
-			col = (tile >>  4) & 0x0f; if (tpens & (1 << col)) dst[11] = pal[col];
-			col = (tile >>  8) & 0x0f; if (tpens & (1 << col)) dst[14] = pal[col];
+			col = (tile >> 0) & 0x0f; if (tpens & (1 << col)) dst[15] = pal[col];
+			col = (tile >> 4) & 0x0f; if (tpens & (1 << col)) dst[11] = pal[col];
+			col = (tile >> 8) & 0x0f; if (tpens & (1 << col)) dst[14] = pal[col];
 			col = (tile >> 12) & 0x0f; if (tpens & (1 << col)) dst[10] = pal[col];
 			col = (tile >> 16) & 0x0f; if (tpens & (1 << col)) dst[13] = pal[col];
 			col = (tile >> 20) & 0x0f; if (tpens & (1 << col)) dst[ 9] = pal[col];
@@ -647,9 +692,9 @@ static void drawgfx16h_16x16_flipx(UINT32 *src, UINT16 *dst, UINT16 *pal, int li
 		tile = src[1];
 		if (~tile)
 		{
-			col = (tile >>  0) & 0x0f; if (tpens & (1 << col)) dst[ 7] = pal[col];
-			col = (tile >>  4) & 0x0f; if (tpens & (1 << col)) dst[ 3] = pal[col];
-			col = (tile >>  8) & 0x0f; if (tpens & (1 << col)) dst[ 6] = pal[col];
+			col = (tile >> 0) & 0x0f; if (tpens & (1 << col)) dst[ 7] = pal[col];
+			col = (tile >> 4) & 0x0f; if (tpens & (1 << col)) dst[ 3] = pal[col];
+			col = (tile >> 8) & 0x0f; if (tpens & (1 << col)) dst[ 6] = pal[col];
 			col = (tile >> 12) & 0x0f; if (tpens & (1 << col)) dst[ 2] = pal[col];
 			col = (tile >> 16) & 0x0f; if (tpens & (1 << col)) dst[ 5] = pal[col];
 			col = (tile >> 20) & 0x0f; if (tpens & (1 << col)) dst[ 1] = pal[col];
@@ -671,9 +716,9 @@ static void drawgfx16h_16x16_flipy(UINT32 *src, UINT16 *dst, UINT16 *pal, int li
 		tile = src[0];
 		if (~tile)
 		{
-			col = (tile >>  0) & 0x0f; if (tpens & (1 << col)) dst[ 0] = pal[col];
-			col = (tile >>  4) & 0x0f; if (tpens & (1 << col)) dst[ 4] = pal[col];
-			col = (tile >>  8) & 0x0f; if (tpens & (1 << col)) dst[ 1] = pal[col];
+			col = (tile >> 0) & 0x0f; if (tpens & (1 << col)) dst[ 0] = pal[col];
+			col = (tile >> 4) & 0x0f; if (tpens & (1 << col)) dst[ 4] = pal[col];
+			col = (tile >> 8) & 0x0f; if (tpens & (1 << col)) dst[ 1] = pal[col];
 			col = (tile >> 12) & 0x0f; if (tpens & (1 << col)) dst[ 5] = pal[col];
 			col = (tile >> 16) & 0x0f; if (tpens & (1 << col)) dst[ 2] = pal[col];
 			col = (tile >> 20) & 0x0f; if (tpens & (1 << col)) dst[ 6] = pal[col];
@@ -683,9 +728,9 @@ static void drawgfx16h_16x16_flipy(UINT32 *src, UINT16 *dst, UINT16 *pal, int li
 		tile = src[1];
 		if (~tile)
 		{
-			col = (tile >>  0) & 0x0f; if (tpens & (1 << col)) dst[ 8] = pal[col];
-			col = (tile >>  4) & 0x0f; if (tpens & (1 << col)) dst[12] = pal[col];
-			col = (tile >>  8) & 0x0f; if (tpens & (1 << col)) dst[ 9] = pal[col];
+			col = (tile >> 0) & 0x0f; if (tpens & (1 << col)) dst[ 8] = pal[col];
+			col = (tile >> 4) & 0x0f; if (tpens & (1 << col)) dst[12] = pal[col];
+			col = (tile >> 8) & 0x0f; if (tpens & (1 << col)) dst[ 9] = pal[col];
 			col = (tile >> 12) & 0x0f; if (tpens & (1 << col)) dst[13] = pal[col];
 			col = (tile >> 16) & 0x0f; if (tpens & (1 << col)) dst[10] = pal[col];
 			col = (tile >> 20) & 0x0f; if (tpens & (1 << col)) dst[14] = pal[col];
@@ -707,9 +752,9 @@ static void drawgfx16h_16x16_flipxy(UINT32 *src, UINT16 *dst, UINT16 *pal, int l
 		tile = src[0];
 		if (~tile)
 		{
-			col = (tile >>  0) & 0x0f; if (tpens & (1 << col)) dst[15] = pal[col];
-			col = (tile >>  4) & 0x0f; if (tpens & (1 << col)) dst[11] = pal[col];
-			col = (tile >>  8) & 0x0f; if (tpens & (1 << col)) dst[14] = pal[col];
+			col = (tile >> 0) & 0x0f; if (tpens & (1 << col)) dst[15] = pal[col];
+			col = (tile >> 4) & 0x0f; if (tpens & (1 << col)) dst[11] = pal[col];
+			col = (tile >> 8) & 0x0f; if (tpens & (1 << col)) dst[14] = pal[col];
 			col = (tile >> 12) & 0x0f; if (tpens & (1 << col)) dst[10] = pal[col];
 			col = (tile >> 16) & 0x0f; if (tpens & (1 << col)) dst[13] = pal[col];
 			col = (tile >> 20) & 0x0f; if (tpens & (1 << col)) dst[ 9] = pal[col];
@@ -719,9 +764,9 @@ static void drawgfx16h_16x16_flipxy(UINT32 *src, UINT16 *dst, UINT16 *pal, int l
 		tile = src[1];
 		if (~tile)
 		{
-			col = (tile >>  0) & 0x0f; if (tpens & (1 << col)) dst[ 7] = pal[col];
-			col = (tile >>  4) & 0x0f; if (tpens & (1 << col)) dst[ 3] = pal[col];
-			col = (tile >>  8) & 0x0f; if (tpens & (1 << col)) dst[ 6] = pal[col];
+			col = (tile >> 0) & 0x0f; if (tpens & (1 << col)) dst[ 7] = pal[col];
+			col = (tile >> 4) & 0x0f; if (tpens & (1 << col)) dst[ 3] = pal[col];
+			col = (tile >> 8) & 0x0f; if (tpens & (1 << col)) dst[ 6] = pal[col];
 			col = (tile >> 12) & 0x0f; if (tpens & (1 << col)) dst[ 2] = pal[col];
 			col = (tile >> 16) & 0x0f; if (tpens & (1 << col)) dst[ 5] = pal[col];
 			col = (tile >> 20) & 0x0f; if (tpens & (1 << col)) dst[ 1] = pal[col];
@@ -733,13 +778,12 @@ static void drawgfx16h_16x16_flipxy(UINT32 *src, UINT16 *dst, UINT16 *pal, int l
 	}
 }
 
-
 /******************************************************************************
-	OBJECTƒXƒvƒ‰ƒCƒgŠÇ—
+	OBJECTï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ç—ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	OBJECTƒeƒNƒXƒ`ƒƒ‚©‚çƒXƒvƒ‰ƒCƒg”Ô†‚ğæ“¾
+	OBJECTï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ôï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------------------------*/
 
 static INT16 object_get_sprite(UINT32 key)
@@ -758,9 +802,8 @@ static INT16 object_get_sprite(UINT32 key)
 	return -1;
 }
 
-
 /*------------------------------------------------------------------------
-	OBJECTƒeƒNƒXƒ`ƒƒ‚ÉƒXƒvƒ‰ƒCƒg‚ğ“o˜^
+	OBJECTï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÉƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½oï¿½^
 ------------------------------------------------------------------------*/
 
 static INT16 object_insert_sprite(UINT32 key)
@@ -774,7 +817,7 @@ static INT16 object_insert_sprite(UINT32 key)
 	object_free_head = object_free_head->next;
 
 	q->next = NULL;
-	q->key  = key;
+	q->key = key;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -792,9 +835,8 @@ static INT16 object_insert_sprite(UINT32 key)
 	return q->index;
 }
 
-
 /*------------------------------------------------------------------------
-	OBJECTƒeƒNƒXƒ`ƒƒ‚©‚çˆê’èŠÔ‚ğŒo‰ß‚µ‚½ƒXƒvƒ‰ƒCƒg‚ğíœ
+	OBJECTï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½èï¿½Ô‚ï¿½ï¿½oï¿½ß‚ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void object_delete_sprite(void)
@@ -837,13 +879,12 @@ static void object_delete_sprite(void)
 	}
 }
 
-
 /******************************************************************************
-	SCROLL1ƒXƒvƒ‰ƒCƒgŠÇ—
+	SCROLL1ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ç—ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	SCROLL1ƒeƒNƒXƒ`ƒƒ‚©‚çƒXƒvƒ‰ƒCƒg”Ô†‚ğæ“¾
+	SCROLL1ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ôï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------------------------*/
 
 static INT16 scroll1_get_sprite(UINT32 key)
@@ -862,9 +903,8 @@ static INT16 scroll1_get_sprite(UINT32 key)
 	return -1;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL1ƒeƒNƒXƒ`ƒƒ‚ÉƒXƒvƒ‰ƒCƒg‚ğ“o˜^
+	SCROLL1ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÉƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½oï¿½^
 ------------------------------------------------------------------------*/
 
 static INT16 scroll1_insert_sprite(UINT32 key)
@@ -878,7 +918,7 @@ static INT16 scroll1_insert_sprite(UINT32 key)
 	scroll1_free_head = scroll1_free_head->next;
 
 	q->next = NULL;
-	q->key  = key;
+	q->key = key;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -896,9 +936,8 @@ static INT16 scroll1_insert_sprite(UINT32 key)
 	return q->index;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL1ƒeƒNƒXƒ`ƒƒ‚©‚çˆê’èŠÔ‚ğŒo‰ß‚µ‚½ƒXƒvƒ‰ƒCƒg‚ğíœ
+	SCROLL1ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½èï¿½Ô‚ï¿½ï¿½oï¿½ß‚ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void scroll1_delete_sprite(void)
@@ -941,13 +980,12 @@ static void scroll1_delete_sprite(void)
 	}
 }
 
-
 /******************************************************************************
-	SCROLL2ƒXƒvƒ‰ƒCƒgŠÇ—
+	SCROLL2ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ç—ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	SCROLL2ƒeƒNƒXƒ`ƒƒ‚©‚çƒXƒvƒ‰ƒCƒg”Ô†‚ğæ“¾
+	SCROLL2ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ôï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------------------------*/
 
 static INT16 scroll2_get_sprite(UINT32 key)
@@ -966,9 +1004,8 @@ static INT16 scroll2_get_sprite(UINT32 key)
 	return -1;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2ƒeƒNƒXƒ`ƒƒ‚ÉƒXƒvƒ‰ƒCƒg‚ğ“o˜^
+	SCROLL2ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÉƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½oï¿½^
 ------------------------------------------------------------------------*/
 
 static INT16 scroll2_insert_sprite(UINT32 key)
@@ -982,7 +1019,7 @@ static INT16 scroll2_insert_sprite(UINT32 key)
 	scroll2_free_head = scroll2_free_head->next;
 
 	q->next = NULL;
-	q->key  = key;
+	q->key = key;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -1000,9 +1037,8 @@ static INT16 scroll2_insert_sprite(UINT32 key)
 	return q->index;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2ƒeƒNƒXƒ`ƒƒ‚©‚çˆê’èŠÔ‚ğŒo‰ß‚µ‚½ƒXƒvƒ‰ƒCƒg‚ğíœ
+	SCROLL2ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½èï¿½Ô‚ï¿½ï¿½oï¿½ß‚ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void scroll2_delete_sprite(void)
@@ -1045,13 +1081,12 @@ static void scroll2_delete_sprite(void)
 	}
 }
 
-
 /******************************************************************************
-	SCROLL3ƒXƒvƒ‰ƒCƒgŠÇ—
+	SCROLL3ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ç—ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	SCROLL3ƒeƒNƒXƒ`ƒƒ‚©‚çƒXƒvƒ‰ƒCƒg”Ô†‚ğæ“¾
+	SCROLL3ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ôï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------------------------*/
 
 static INT16 scroll3_get_sprite(UINT32 key)
@@ -1070,9 +1105,8 @@ static INT16 scroll3_get_sprite(UINT32 key)
 	return -1;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL3ƒeƒNƒXƒ`ƒƒ‚ÉƒXƒvƒ‰ƒCƒg‚ğ“o˜^
+	SCROLL3ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÉƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½oï¿½^
 ------------------------------------------------------------------------*/
 
 static INT16 scroll3_insert_sprite(UINT32 key)
@@ -1086,7 +1120,7 @@ static INT16 scroll3_insert_sprite(UINT32 key)
 	scroll3_free_head = scroll3_free_head->next;
 
 	q->next = NULL;
-	q->key  = key;
+	q->key = key;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -1104,9 +1138,8 @@ static INT16 scroll3_insert_sprite(UINT32 key)
 	return q->index;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL3ƒeƒNƒXƒ`ƒƒ‚©‚çˆê’èŠÔ‚ğŒo‰ß‚µ‚½ƒXƒvƒ‰ƒCƒg‚ğíœ
+	SCROLL3ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½èï¿½Ô‚ï¿½ï¿½oï¿½ß‚ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void scroll3_delete_sprite(void)
@@ -1149,13 +1182,12 @@ static void scroll3_delete_sprite(void)
 	}
 }
 
-
 /******************************************************************************
-	SCROLLHƒXƒvƒ‰ƒCƒgŠÇ—
+	SCROLLHï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ç—ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	SCROLLHƒeƒNƒXƒ`ƒƒ‚ğƒŠƒZƒbƒg‚·‚é
+	SCROLLHï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Zï¿½bï¿½gï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 static void scrollh_reset_sprite(void)
@@ -1179,9 +1211,8 @@ static void scrollh_reset_sprite(void)
 	scroll3_palette_is_dirty = 0;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLLHƒeƒNƒXƒ`ƒƒ‚©‚çƒXƒvƒ‰ƒCƒg”Ô†‚ğæ“¾
+	SCROLLHï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½Ôï¿½ï¿½ï¿½ï¿½æ“¾
 ------------------------------------------------------------------------*/
 
 static INT16 scrollh_get_sprite(UINT32 key)
@@ -1200,9 +1231,8 @@ static INT16 scrollh_get_sprite(UINT32 key)
 	return -1;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLLHƒeƒNƒXƒ`ƒƒ‚ÉƒXƒvƒ‰ƒCƒg‚ğ“o˜^
+	SCROLLHï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ÉƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½oï¿½^
 ------------------------------------------------------------------------*/
 
 static INT16 scrollh_insert_sprite(UINT32 key)
@@ -1216,8 +1246,8 @@ static INT16 scrollh_insert_sprite(UINT32 key)
 	scrollh_free_head = scrollh_free_head->next;
 
 	q->next = NULL;
-	q->key  = key;
-	q->pal  = (key >> 16) & 0x1f;
+	q->key = key;
+	q->pal = (key >> 16) & 0x1f;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -1235,9 +1265,8 @@ static INT16 scrollh_insert_sprite(UINT32 key)
 	return q->index;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLLHƒeƒNƒXƒ`ƒƒ‚©‚çˆê’èŠÔ‚ğŒo‰ß‚µ‚½ƒXƒvƒ‰ƒCƒg‚ğíœ
+	SCROLLHï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½èï¿½Ô‚ï¿½ï¿½oï¿½ß‚ï¿½ï¿½ï¿½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void scrollh_delete_sprite(void)
@@ -1280,10 +1309,9 @@ static void scrollh_delete_sprite(void)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLLHƒLƒƒƒbƒVƒ
-‚©‚çw’è‚µ‚½“§‰ßƒyƒ“‚ÌƒeƒNƒXƒ`ƒƒ‚ğíœ
+	SCROLLHï¿½Lï¿½ï¿½ï¿½bï¿½Vï¿½
+ï¿½ï¿½ï¿½ï¿½wï¿½è‚µï¿½ï¿½ï¿½ï¿½ï¿½ßƒyï¿½ï¿½ï¿½Ìƒeï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void scrollh_delete_sprite_tpens(UINT16 tpens)
@@ -1326,9 +1354,8 @@ static void scrollh_delete_sprite_tpens(UINT16 tpens)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLLHƒeƒNƒXƒ`ƒƒ‚©‚çƒpƒŒƒbƒg‚ª•ÏX‚³‚ê‚½ƒXƒvƒ‰ƒCƒg‚ğíœ
+	SCROLLHï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½pï¿½ï¿½ï¿½bï¿½gï¿½ï¿½ï¿½ÏXï¿½ï¿½ï¿½ê‚½ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½íœ
 ------------------------------------------------------------------------*/
 
 static void scrollh_delete_dirty_palette(void)
@@ -1392,13 +1419,12 @@ static void scrollh_delete_dirty_palette(void)
 	}
 }
 
-
 /******************************************************************************
-	ƒXƒvƒ‰ƒCƒg•`‰æƒCƒ“ƒ^ƒtƒF[ƒXŠÖ”
+	ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½`ï¿½ï¿½Cï¿½ï¿½ï¿½^ï¿½tï¿½Fï¿½[ï¿½Xï¿½Öï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------------------------
-	‘S‚Ä‚ÌƒXƒvƒ‰ƒCƒg‚ğ‘¦À‚ÉƒNƒŠƒA‚·‚é
+	ï¿½Sï¿½Ä‚ÌƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ğ‘¦ï¿½ï¿½ÉƒNï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_clear_all_sprite(void)
@@ -1443,9 +1469,8 @@ void blit_clear_all_sprite(void)
 	memset(palette_dirty_marks, 0, sizeof(palette_dirty_marks));
 }
 
-
 /*------------------------------------------------------------------------
-	ƒnƒCƒŒƒCƒ„[‚ğƒNƒŠƒA‚·‚é
+	ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½Nï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_scrollh_clear_sprite(UINT16 tpens)
@@ -1453,9 +1478,8 @@ void blit_scrollh_clear_sprite(UINT16 tpens)
 	scrollh_delete_sprite_tpens(tpens);
 }
 
-
 /*------------------------------------------------------------------------
-	ƒpƒŒƒbƒg•ÏXƒtƒ‰ƒO‚ğ—§‚Ä‚é
+	ï¿½pï¿½ï¿½ï¿½bï¿½gï¿½ÏXï¿½tï¿½ï¿½ï¿½Oï¿½ğ—§‚Ä‚ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_palette_mark_dirty(int palno)
@@ -1467,21 +1491,30 @@ void blit_palette_mark_dirty(int palno)
 	palette_dirty_marks[palno] = 1;
 }
 
-
 /*------------------------------------------------------------------------
-	ƒXƒvƒ‰ƒCƒgˆ—‚ÌƒŠƒZƒbƒg
+	ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½ï¿½ï¿½Ìƒï¿½ï¿½Zï¿½bï¿½g
 ------------------------------------------------------------------------*/
 
 void blit_reset(int bank_scroll1, int bank_scroll2, int bank_scroll3, UINT8 *pen_usage16)
 {
 	int i;
 
-	scrbitmap   = (UINT16 *)video_frame_addr(work_frame, 0, 0);
+#ifdef PLATFORM_SDL
+	/* SDL build: render straight into the framebuffer; skip PSP VRAM texture heap. */
+	scrbitmap  = (UINT16 *)video_frame_addr(work_frame, 0, 0);
+	tex_scrollh = NULL;
+	tex_object = NULL;
+	tex_scroll1 = NULL;
+	tex_scroll2 = NULL;
+	tex_scroll3 = NULL;
+#else
+	scrbitmap  = (UINT16 *)video_frame_addr(work_frame, 0, 0);
 	tex_scrollh = scrbitmap + BUF_WIDTH * SCR_HEIGHT;
-	tex_object  = (UINT8 *)(tex_scrollh + BUF_WIDTH * SCROLLH_MAX_HEIGHT);
-	tex_scroll1 = tex_object  + BUF_WIDTH * TEXTURE_HEIGHT;
+	tex_object = (UINT8 *)(tex_scrollh + BUF_WIDTH * SCROLLH_MAX_HEIGHT);
+	tex_scroll1 = tex_object + BUF_WIDTH * TEXTURE_HEIGHT;
 	tex_scroll2 = tex_scroll1 + BUF_WIDTH * TEXTURE_HEIGHT;
 	tex_scroll3 = tex_scroll2 + BUF_WIDTH * TEXTURE_HEIGHT;
+#endif
 
 	for (i = 0; i < OBJECT_TEXTURE_SIZE; i++) object_data[i].index = i;
 	for (i = 0; i < SCROLL1_TEXTURE_SIZE; i++) scroll1_data[i].index = i;
@@ -1489,7 +1522,7 @@ void blit_reset(int bank_scroll1, int bank_scroll2, int bank_scroll3, UINT8 *pen
 	for (i = 0; i < SCROLL3_TEXTURE_SIZE; i++) scroll3_data[i].index = i;
 	for (i = 0; i < SCROLLH_TEXTURE_SIZE; i++) scrollh_data[i].index = i;
 
-	gfx_object  = memory_region_gfx1;
+	gfx_object = memory_region_gfx1;
 	gfx_scroll1 = &memory_region_gfx1[bank_scroll1 << 21];
 	gfx_scroll2 = &memory_region_gfx1[bank_scroll2 << 21];
 	gfx_scroll3 = &memory_region_gfx1[bank_scroll3 << 21];
@@ -1500,9 +1533,8 @@ void blit_reset(int bank_scroll1, int bank_scroll2, int bank_scroll3, UINT8 *pen
 	blit_clear_all_sprite();
 }
 
-
 /*------------------------------------------------------------------------
-	ƒXƒvƒ‰ƒCƒg•`‰æŠJn
+	ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½`ï¿½ï¿½Jï¿½n
 ------------------------------------------------------------------------*/
 
 void blit_start(int high_layer)
@@ -1520,10 +1552,14 @@ void blit_start(int high_layer)
 	clut1_num = 0;
 
 	object_index = 0;
-	object_num  = 0;
+	object_num = 0;
 
 	scrollh_num = 0;
 
+#ifdef PLATFORM_SDL
+	/* SDL software renderer: clear the software backbuffer each frame. */
+	video_clear_frame(work_frame);
+#else
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_5551, draw_frame, BUF_WIDTH);
 	sceGuScissor(0, 0, SCR_WIDTH, SCR_HEIGHT);
@@ -1536,15 +1572,37 @@ void blit_start(int high_layer)
 	sceGuTexFilter(GU_NEAREST, GU_NEAREST);
 	sceGuFinish();
 	sceGuSync(0, GU_SYNC_FINISH);
+#endif
 }
 
-
 /*------------------------------------------------------------------------
-	ƒXƒvƒ‰ƒCƒg•`‰æI—¹
+	ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish(void)
 {
+#ifdef PLATFORM_SDL
+	/* Debug: count non-zero pixels in work_frame within the source clip region */
+	if (njemu_debug)
+	{
+		static int debug_count = 0;
+		if (debug_count < 10)
+		{
+			int nonzero = 0;
+			for (int y = cps_src_clip.top; y < cps_src_clip.bottom; y++)
+			{
+				for (int x = cps_src_clip.left; x < cps_src_clip.right; x++)
+				{
+					if (work_frame[y * BUF_WIDTH + x] != 0)
+						nonzero++;
+				}
+			}
+			fprintf(stderr, "[blit_finish] work_frame nonzero pixels in clip region: %d\n", nonzero);
+			debug_count++;
+		}
+	}
+#endif
+
 	if (cps_rotate_screen)
 	{
 		if (cps_flip_screen)
@@ -1564,9 +1622,8 @@ void blit_finish(void)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	OBJECTƒeƒNƒXƒ`ƒƒ‚ğXV
+	OBJECTï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1588,13 +1645,20 @@ void blit_update_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	OBJECT‚ğ•`‰æƒŠƒXƒg‚É“o˜^
+	OBJECTï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 void blit_draw_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 {
+	static int obj_call_count = 0;
+	if (obj_call_count < 5)
+	{
+		fprintf(stderr, "[blit_draw_object] call %d: x=%d y=%d code=%u attr=%04x\n",
+			obj_call_count, x, y, code, attr);
+	}
+	obj_call_count++;
+
 #ifdef PLATFORM_SDL
 	UINT16 *pal = &video_palette[(attr & 0x1f) << 4];
 	blit_tile_generic(&gfx_object[code << 7], 16, 16, (attr & 0x20) != 0, (attr & 0x40) != 0, pal, 0, x, y);
@@ -1627,10 +1691,10 @@ void blit_draw_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 			while (lines--)
 			{
 				tile = *(UINT32 *)(src + 0);
-				*(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
-				*(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+				*(UINT32 *)(dst + 0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+				*(UINT32 *)(dst + 4) = ((tile >> 4) & 0x0f0f0f0f) | col;
 				tile = *(UINT32 *)(src + 4);
-				*(UINT32 *)(dst +  8) = ((tile >> 0) & 0x0f0f0f0f) | col;
+				*(UINT32 *)(dst + 8) = ((tile >> 0) & 0x0f0f0f0f) | col;
 				*(UINT32 *)(dst + 12) = ((tile >> 4) & 0x0f0f0f0f) | col;
 				src += 8;
 				dst += swizzle_table_8bit[lines];
@@ -1658,17 +1722,12 @@ void blit_draw_object(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	OBJECT•`‰æI—¹
+	OBJECTï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish_object(void)
 {
-#ifdef PLATFORM_SDL
-	return;
-#endif
-
 	int i, total_sprites = 0;
 	UINT8 color = 0;
 	struct Vertex *vertices, *vertices_tmp;
@@ -1676,6 +1735,10 @@ void blit_finish_object(void)
 
 	if (!object_num) return;
 
+#ifdef PLATFORM_SDL
+	/* SDL: GU path unused; objects are already swizzled into tex_object. */
+	return;
+#else
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
 	sceGuScissor(64, 16, 448, 240);
@@ -1716,11 +1779,11 @@ void blit_finish_object(void)
 
 	sceGuFinish();
 	sceGuSync(0, GU_SYNC_FINISH);
+#endif
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL1ƒeƒNƒXƒ`ƒƒ‚ğXV
+	SCROLL1ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1739,9 +1802,8 @@ void blit_update_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL1‚ğ•`‰æƒŠƒXƒg‚É“o˜^
+	SCROLL1ï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 gfxset)
@@ -1775,8 +1837,8 @@ void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 gfxset
 		while (lines--)
 		{
 			tile = *(UINT32 *)(src + 0);
-			*(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst + 0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst + 4) = ((tile >> 4) & 0x0f0f0f0f) | col;
 			src += 8;
 			dst += 16;
 		}
@@ -1806,9 +1868,8 @@ void blit_draw_scroll1(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 gfxset
 	vertices[1].y += 8;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL1•`‰æI—¹
+	SCROLL1ï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish_scroll1(void)
@@ -1853,37 +1914,35 @@ void blit_finish_scroll1(void)
 	sceGuSync(0, GU_SYNC_FINISH);
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2ƒNƒŠƒbƒv”ÍˆÍİ’è
+	SCROLL2ï¿½Nï¿½ï¿½ï¿½bï¿½vï¿½ÍˆÍİ’ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_set_clip_scroll2(INT16 min_y, INT16 max_y)
 {
-#ifdef PLATFORM_SDL
-	blit_draw_scroll2  = blit_draw_scroll2_software;
-	blit_draw_scroll2h = blit_draw_scroll2h_software;
-	return;
-#endif
-
 	scroll2_min_y = min_y;
 	scroll2_max_y = max_y + 1;
 
+#ifdef PLATFORM_SDL
+	/* SDL path always uses software blitter; GU textures are not populated. */
+	blit_draw_scroll2 = blit_draw_scroll2_software;
+	blit_draw_scroll2h = blit_draw_scroll2h_software;
+#else
 	if (scroll2_max_y - scroll2_min_y >= 16)
 	{
-		blit_draw_scroll2  = blit_draw_scroll2_hardware;
+		blit_draw_scroll2 = blit_draw_scroll2_hardware;
 		blit_draw_scroll2h = blit_draw_scroll2h_hardware;
 	}
 	else
 	{
-		blit_draw_scroll2  = blit_draw_scroll2_software;
+		blit_draw_scroll2 = blit_draw_scroll2_software;
 		blit_draw_scroll2h = blit_draw_scroll2h_software;
 	}
+#endif
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2‚Ì•`‰æ”ÍˆÍƒ`ƒFƒbƒN
+	SCROLL2ï¿½Ì•`ï¿½ï¿½ÍˆÍƒ`ï¿½Fï¿½bï¿½N
 ------------------------------------------------------------------------*/
 
 int blit_check_clip_scroll2(INT16 sy)
@@ -1897,9 +1956,8 @@ int blit_check_clip_scroll2(INT16 sy)
 	return (scroll2_sy < scroll2_ey);
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2ƒeƒNƒXƒ`ƒƒ‚ğXV
+	SCROLL2ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_scroll2(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1921,9 +1979,8 @@ void blit_update_scroll2(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2(ƒ‰ƒCƒ“ƒXƒNƒ[ƒ‹)‚ğ’¼ÚVRAM‚É•`‰æ
+	SCROLL2(ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½)ï¿½ğ’¼ï¿½VRAMï¿½É•`ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 static void blit_draw_scroll2_software(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1932,6 +1989,8 @@ static void blit_draw_scroll2_software(INT16 x, INT16 y, UINT32 code, UINT16 att
 	UINT8 func;
 
 	src = code << 7;
+	#ifdef PLATFORM_SDL
+	#endif
 
 	if (attr & 0x40)
 	{
@@ -1952,9 +2011,8 @@ static void blit_draw_scroll2_software(INT16 x, INT16 y, UINT32 code, UINT16 att
 					scroll2_ey - scroll2_sy);
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2‚ğ•`‰æƒŠƒXƒg‚É“o˜^
+	SCROLL2ï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 static void blit_draw_scroll2_hardware(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -1982,10 +2040,10 @@ static void blit_draw_scroll2_hardware(INT16 x, INT16 y, UINT32 code, UINT16 att
 		while (lines--)
 		{
 			tile = *(UINT32 *)(src + 0);
-			*(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst + 0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst + 4) = ((tile >> 4) & 0x0f0f0f0f) | col;
 			tile = *(UINT32 *)(src + 4);
-			*(UINT32 *)(dst +  8) = ((tile >> 0) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst + 8) = ((tile >> 0) & 0x0f0f0f0f) | col;
 			*(UINT32 *)(dst + 12) = ((tile >> 4) & 0x0f0f0f0f) | col;
 			src += 8;
 			dst += swizzle_table_8bit[lines];
@@ -2016,9 +2074,8 @@ static void blit_draw_scroll2_hardware(INT16 x, INT16 y, UINT32 code, UINT16 att
 	vertices[1].y += 16;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2•`‰æI—¹
+	SCROLL2ï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish_scroll2(void)
@@ -2063,9 +2120,8 @@ void blit_finish_scroll2(void)
 	sceGuSync(0, GU_SYNC_FINISH);
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL3ƒeƒNƒXƒ`ƒƒ‚ğXV
+	SCROLL3ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -2084,9 +2140,8 @@ void blit_update_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL3‚ğ•`‰æƒŠƒXƒg‚É“o˜^
+	SCROLL3ï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 void blit_draw_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -2120,10 +2175,10 @@ void blit_draw_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 		while (lines--)
 		{
 			tile = *(UINT32 *)(src + 0);
-			*(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst + 0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst + 4) = ((tile >> 4) & 0x0f0f0f0f) | col;
 			tile = *(UINT32 *)(src + 4);
-			*(UINT32 *)(dst +  8) = ((tile >> 0) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst + 8) = ((tile >> 0) & 0x0f0f0f0f) | col;
 			*(UINT32 *)(dst + 12) = ((tile >> 4) & 0x0f0f0f0f) | col;
 			tile = *(UINT32 *)(src + 8);
 			*(UINT32 *)(dst + 128) = ((tile >> 0) & 0x0f0f0f0f) | col;
@@ -2160,9 +2215,8 @@ void blit_draw_scroll3(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 	vertices[1].y += 32;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL3•`‰æI—¹
+	SCROLL3ï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish_scroll3(void)
@@ -2207,9 +2261,8 @@ void blit_finish_scroll3(void)
 	sceGuSync(0, GU_SYNC_FINISH);
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL1(ƒnƒCƒŒƒCƒ„[)‚ğ•`‰æƒŠƒXƒg‚É“o˜^
+	SCROLL1(ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[)ï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 void blit_draw_scroll1h(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens, UINT16 gfxset)
@@ -2285,9 +2338,8 @@ void blit_draw_scroll1h(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens
 	scrollh_num += 2;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2(ƒnƒCƒŒƒCƒ„[/ƒ‰ƒCƒ“ƒXƒNƒ[ƒ‹)‚ğ’¼ÚVRAM‚É•`‰æ
+	SCROLL2(ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[/ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½)ï¿½ğ’¼ï¿½VRAMï¿½É•`ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 static void blit_draw_scroll2h_software(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens)
@@ -2329,9 +2381,8 @@ static void blit_draw_scroll2h_software(INT16 x, INT16 y, UINT32 code, UINT16 at
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2(ƒnƒCƒŒƒCƒ„[)ƒeƒNƒXƒ`ƒƒ‚ğXV
+	SCROLL2(ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[)ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_scroll2h(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -2353,9 +2404,8 @@ void blit_update_scroll2h(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2(ƒnƒCƒŒƒCƒ„[)‚ğ•`‰æƒŠƒXƒg‚É“o˜^
+	SCROLL2(ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[)ï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 static void blit_draw_scroll2h_hardware(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens)
@@ -2433,9 +2483,8 @@ static void blit_draw_scroll2h_hardware(INT16 x, INT16 y, UINT32 code, UINT16 at
 	scrollh_num += 2;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL2(ƒnƒCƒŒƒCƒ„[)•`‰æI—¹
+	SCROLL2(ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[)ï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish_scroll2h(void)
@@ -2461,9 +2510,8 @@ void blit_finish_scroll2h(void)
 	scrollh_num = 0;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL3(ƒnƒCƒŒƒCƒ„[)‚ğ•`‰æƒŠƒXƒg‚É“o˜^
+	SCROLL3(ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[)ï¿½ï¿½`ï¿½æƒŠï¿½Xï¿½gï¿½É“oï¿½^
 ------------------------------------------------------------------------*/
 
 void blit_draw_scroll3h(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens)
@@ -2566,9 +2614,8 @@ void blit_draw_scroll3h(INT16 x, INT16 y, UINT32 code, UINT16 attr, UINT16 tpens
 	scrollh_num += 2;
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL1,3(ƒnƒCƒŒƒCƒ„[)ƒeƒNƒXƒ`ƒƒ‚ğXV
+	SCROLL1,3(ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[)ï¿½eï¿½Nï¿½Xï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½Xï¿½V
 ------------------------------------------------------------------------*/
 
 void blit_update_scrollh(INT16 x, INT16 y, UINT32 code, UINT16 attr)
@@ -2587,9 +2634,8 @@ void blit_update_scrollh(INT16 x, INT16 y, UINT32 code, UINT16 attr)
 	}
 }
 
-
 /*------------------------------------------------------------------------
-	SCROLL1,3(ƒnƒCƒŒƒCƒ„[)•`‰æI—¹
+	SCROLL1,3(ï¿½nï¿½Cï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[)ï¿½`ï¿½ï¿½Iï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_finish_scrollh(void)
@@ -2597,6 +2643,11 @@ void blit_finish_scrollh(void)
 	struct Vertex *vertices;
 
 	if (!scrollh_num) return;
+
+#ifdef PLATFORM_SDL
+	/* SDL path draws scrollh tiles directly into the framebuffer. */
+	return;
+#endif
 
 	sceGuStart(GU_DIRECT, gulist);
 
@@ -2613,9 +2664,8 @@ void blit_finish_scrollh(void)
 	sceGuSync(0, GU_SYNC_FINISH);
 }
 
-
 /*------------------------------------------------------------------------
-	STARSƒŒƒCƒ„[•`‰æ
+	STARSï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½`ï¿½ï¿½
 ------------------------------------------------------------------------*/
 
 void blit_draw_stars(UINT16 stars_x, UINT16 stars_y, UINT8 *col, UINT16 *pal)
@@ -2638,8 +2688,8 @@ void blit_draw_stars(UINT16 stars_x, UINT16 stars_y, UINT8 *col, UINT16 *pal)
 		{
 			if (*col != 0x0f)
 			{
-				vertices_tmp->x     = (((offs >> 8) << 5) - stars_x + (*col & 0x1f)) & 0x1ff;
-				vertices_tmp->y     = ((offs & 0xff) - stars_y) & 0xff;
+				vertices_tmp->x   = (((offs >> 8) << 5) - stars_x + (*col & 0x1f)) & 0x1ff;
+				vertices_tmp->y   = ((offs & 0xff) - stars_y) & 0xff;
 				vertices_tmp->color = pal[(*col & 0xe0) >> 1];
 				vertices_tmp++;
 				stars_num++;

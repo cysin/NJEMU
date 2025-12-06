@@ -33,7 +33,7 @@
 	OPBase = CPU->OPFetch[(A) >> CZ80_FETCH_SFT];			\
 	PC = (A) + CPU->BasePC;
 
-#define GET_OP()			(*(UINT8 *)(OPBase + PC))
+#define GET_OP()				(*(UINT8 *)(PC + OPBase))
 
 #else
 

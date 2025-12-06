@@ -150,14 +150,14 @@ void timer_reset(void)
 	time_slice = 1000000.0 / FPS;
 
 	cpu[CPU_M68000].execute   = m68000_execute;
-	cpu[CPU_M68000].icount    = &C68K.ICount;
+	cpu[CPU_M68000].icount    = m68000_get_icount_ptr();
 	cpu[CPU_M68000].cycles    = 0;
 	cpu[CPU_M68000].suspended = 0;
 	cpu[CPU_M68000].usec_to_cycles = 10000000.0/1000000.0;
 	cpu[CPU_M68000].cycles_to_usec = 1000000.0/10000000.0;
 
 	cpu[CPU_Z80].execute   = z80_execute;
-	cpu[CPU_Z80].icount    = &CZ80.ICount;
+	cpu[CPU_Z80].icount    = z80_get_icount_ptr();
 	cpu[CPU_Z80].cycles    = 0;
 	cpu[CPU_Z80].suspended = 0;
 	cpu[CPU_Z80].usec_to_cycles = 3579545.0/1000000.0;

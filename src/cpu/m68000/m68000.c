@@ -1,3 +1,4 @@
+#ifndef USE_MUSASHI_M68K
 /******************************************************************************
 
 	m68000.c
@@ -7,6 +8,11 @@
 ******************************************************************************/
 
 #include "emumain.h"
+
+#ifdef USE_MUSASHI_M68K
+#include "cpu/Musashi/m68k.h"
+#endif
+
 
 
 /******************************************************************************
@@ -73,33 +79,33 @@ void m68000_init(void)
 	C68k_Set_WriteB(&C68K, m68000_write_memory_8);
 	C68k_Set_WriteW(&C68K, m68000_write_memory_16);
 #if (EMU_SYSTEM == CPS1)
-	C68k_Set_Fetch(&C68K, 0x000000, 0x1fffff, (UINT32)memory_region_cpu1);
-	C68k_Set_Fetch(&C68K, 0x900000, 0x92ffff, (UINT32)cps1_gfxram);
-	C68k_Set_Fetch(&C68K, 0xff0000, 0xffffff, (UINT32)cps1_ram);
+	C68k_Set_Fetch(&C68K, 0x000000, 0x1fffff, memory_region_cpu1);
+	C68k_Set_Fetch(&C68K, 0x900000, 0x92ffff, cps1_gfxram);
+	C68k_Set_Fetch(&C68K, 0xff0000, 0xffffff, cps1_ram);
 #elif (EMU_SYSTEM == CPS2)
 	if (memory_length_user1)
-		C68k_Set_Fetch(&C68K, 0x000000, 0x3fffff, (UINT32)memory_region_user1);
+		C68k_Set_Fetch(&C68K, 0x000000, 0x3fffff, memory_region_user1);
 	else
-		C68k_Set_Fetch(&C68K, 0x000000, 0x3fffff, (UINT32)memory_region_cpu1);
-	C68k_Set_Fetch(&C68K, 0x660000, 0x663fff, (UINT32)cps2_ram);
-	C68k_Set_Fetch(&C68K, 0x900000, 0x92ffff, (UINT32)cps1_gfxram);
-	C68k_Set_Fetch(&C68K, 0xff0000, 0xffffff, (UINT32)cps1_ram);
+		C68k_Set_Fetch(&C68K, 0x000000, 0x3fffff, memory_region_cpu1);
+	C68k_Set_Fetch(&C68K, 0x660000, 0x663fff, cps2_ram);
+	C68k_Set_Fetch(&C68K, 0x900000, 0x92ffff, cps1_gfxram);
+	C68k_Set_Fetch(&C68K, 0xff0000, 0xffffff, cps1_ram);
 	if (memory_length_user1)
 	{
 		C68k_Set_ReadB_PC_Relative(&C68K, m68000_read_pcrelative_8);
 		C68k_Set_ReadW_PC_Relative(&C68K, m68000_read_pcrelative_16);
 	}
 #elif (EMU_SYSTEM == MVS)
-	C68k_Set_Fetch(&C68K, 0x000000, 0x0fffff, (UINT32)memory_region_cpu1);
-	C68k_Set_Fetch(&C68K, 0x100000, 0x10ffff, (UINT32)neogeo_ram);
+	C68k_Set_Fetch(&C68K, 0x000000, 0x0fffff, memory_region_cpu1);
+	C68k_Set_Fetch(&C68K, 0x100000, 0x10ffff, neogeo_ram);
 	if (memory_length_cpu1 > 0x100000)
-		C68k_Set_Fetch(&C68K, 0x200000, 0x2fffff, (UINT32)&memory_region_cpu1[0x100000]);
+		C68k_Set_Fetch(&C68K, 0x200000, 0x2fffff, &memory_region_cpu1[0x100000]);
 	else
-		C68k_Set_Fetch(&C68K, 0x200000, 0x2fffff, (UINT32)memory_region_cpu1);
-	C68k_Set_Fetch(&C68K, 0xc00000, 0xc00000 + (memory_length_user1 - 1), (UINT32)memory_region_user1);
+		C68k_Set_Fetch(&C68K, 0x200000, 0x2fffff, memory_region_cpu1);
+	C68k_Set_Fetch(&C68K, 0xc00000, 0xc00000 + (memory_length_user1 - 1), memory_region_user1);
 #elif (EMU_SYSTEM == NCDZ)
-	C68k_Set_Fetch(&C68K, 0x000000, 0x1fffff, (UINT32)memory_region_cpu1);
-	C68k_Set_Fetch(&C68K, 0xc00000, 0xc7ffff, (UINT32)memory_region_user1);
+	C68k_Set_Fetch(&C68K, 0x000000, 0x1fffff, memory_region_cpu1);
+	C68k_Set_Fetch(&C68K, 0xc00000, 0xc7ffff, memory_region_user1);
 	C68k_Reset(&C68K);
 #endif
 }
@@ -111,7 +117,11 @@ void m68000_init(void)
 
 void m68000_reset(void)
 {
+#ifdef USE_MUSASHI_M68K
+	m68k_pulse_reset();
+#else
 	C68k_Reset(&C68K);
+#endif
 }
 
 
@@ -130,7 +140,11 @@ void m68000_exit(void)
 
 int m68000_execute(int cycles)
 {
+#ifdef USE_MUSASHI_M68K
+	return m68k_execute(cycles);
+#else
 	return C68k_Exec(&C68K, cycles);
+#endif
 }
 
 
@@ -332,3 +346,11 @@ STATE_LOAD( m68000 )
 }
 
 #endif /* SAVE_STATE */
+
+
+int *m68000_get_icount_ptr(void)
+{
+	return &C68K.ICount;
+}
+
+#endif /* USE_MUSASHI_M68K */

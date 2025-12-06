@@ -162,6 +162,10 @@ static void cps1_decode(int swap_key1, int swap_key2, int addr_key, int xor_key)
 
 	memset(memory_region_user2, 0, 0x8000);
 	kabuki_decode(rom, decrypt, rom, 0x0000, 0x8000, swap_key1, swap_key2, addr_key, xor_key);
+#if defined(PLATFORM_SDL)
+	/* SDL build runs Z80 without encrypted opfetch; keep CPU2 as the decrypted source. */
+	memcpy(memory_region_cpu2, memory_region_user2, 0x8000);
+#endif
 }
 
 void wof_decode(void)      { cps1_decode(0x01234567, 0x54163072, 0x5151, 0x51); }

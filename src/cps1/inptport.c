@@ -787,10 +787,20 @@ int input_init(void)
 	input_ui_wait = 0;
 	service_switch = 0;
 	p12_start_pressed = 0;
-	
+
 	memset(cps1_port_value, 0xff, sizeof(cps1_port_value));
 	memset(af_counter, 0, sizeof(af_counter));
 	memset(input_flag, 0, sizeof(input_flag));
+
+#ifdef PLATFORM_SDL
+	/* Initialize dipswitches to default values for normal play mode.
+	 * CPS1 games typically use active-low logic, so 0xff = all OFF.
+	 * This sets: Service Mode=OFF, Freeze=OFF, Flip Screen=OFF,
+	 * Demo Sounds=OFF, Allow Continue=NO (default settings). */
+	cps1_dipswitch[DIP_A] = 0xff;
+	cps1_dipswitch[DIP_B] = 0xff;
+	cps1_dipswitch[DIP_C] = 0xff;
+#endif
 
 	input_analog_value[0] = 0;
 	input_analog_value[1] = 0;

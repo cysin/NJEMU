@@ -29,7 +29,7 @@ static UINT16 frame_c[BUF_WIDTH * SCR_HEIGHT];
 static UINT16 frame_d[BUF_WIDTH * SCR_HEIGHT];
 UINT16 *draw_frame = frame_a;
 UINT16 *work_frame = frame_c;
-UINT16 *show_frame = frame_a;
+UINT16 *show_frame = frame_b;
 UINT16 *tex_frame = frame_d;
 static double perf_to_usec = 0.0;
 static SDL_GameController *controller = NULL;
@@ -43,6 +43,19 @@ static int audio_enable = 0;
 static float audio_volume = 1.0f;
 static INT16 audio_mixbuf[4096 * 2];
 static int audio_channels = 2;
+
+/* Pixel format state: 0=BGR555 (default), 1=RGB555, 2=RGB565 */
+static int pixel_format_type = 0;
+
+UINT16 make_col_15(int r, int g, int b)
+{
+	if (pixel_format_type == 2) /* RGB565 */
+		return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+	else if (pixel_format_type == 1) /* RGB555 */
+		return ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+	else /* BGR555 (Default) */
+		return ((b >> 3) << 10) | ((g >> 3) << 5) | (r >> 3);
+}
 
 /* input state */
 static UINT32 key_buttons = 0;
@@ -175,6 +188,17 @@ static void ensure_video(void)
 	if (window)
 		return;
 
+	if ((SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO) == 0)
+	{
+		if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+		{
+			fprintf(stderr, "[video] SDL_InitSubSystem(SDL_INIT_VIDEO) failed: %s\n", SDL_GetError());
+			return;
+		}
+	}
+
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+
 	int w = SCR_WIDTH * window_scale;
 	int h = SCR_HEIGHT * window_scale;
 
@@ -185,9 +209,32 @@ static void ensure_video(void)
 	}
 
 	SDL_SetWindowTitle(window, "NJEMU (SDL)");
-	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, BUF_WIDTH, SCR_HEIGHT);
+	SDL_RenderSetLogicalSize(renderer, SCR_WIDTH, SCR_HEIGHT);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+
+	const Uint32 formats[] = {
+		SDL_PIXELFORMAT_BGR555,    /* matches MAKECOL15 (bbbbb ggggg rrrrr) */
+		SDL_PIXELFORMAT_RGB555,
+		SDL_PIXELFORMAT_RGB565
+	};
+
+	for (size_t i = 0; i < sizeof(formats) / sizeof(formats[0]); i++)
+	{
+		texture = SDL_CreateTexture(renderer, formats[i], SDL_TEXTUREACCESS_STREAMING, SCR_WIDTH, SCR_HEIGHT);
+		if (texture)
+		{
+			Uint32 fmt = formats[i];
+			if (fmt == SDL_PIXELFORMAT_RGB555) pixel_format_type = 1;
+			else if (fmt == SDL_PIXELFORMAT_RGB565) pixel_format_type = 2;
+			else pixel_format_type = 0;
+
+			fprintf(stderr, "[video] Using format %s\n", SDL_GetPixelFormatName(fmt));
+			break;
+		}
+	}
+
 	if (!texture)
-		fprintf(stderr, "[video] SDL_CreateTexture failed: %s\n", SDL_GetError());
+		fprintf(stderr, "[video] SDL_CreateTexture failed (checked 1555/555/565 formats): %s\n", SDL_GetError());
 }
 
 static void audio_callback(void *userdata, Uint8 *stream, int len)
@@ -266,12 +313,41 @@ void video_flip_screen(int wait_vsync)
 	ensure_video();
 
 	UINT16 *display = draw_frame;
+	if (njemu_debug)
+	{
+		static int blank_logged = 0;
+		int total = BUF_WIDTH * SCR_HEIGHT;
+		int display_nonzero = 0;
+		int work_nonzero = 0;
+
+		for (int i = 0; i < total; i++)
+		{
+			if (!display_nonzero && display[i] != 0)
+				display_nonzero = 1;
+			if (!work_nonzero && work_frame[i] != 0)
+				work_nonzero = 1;
+			if (display_nonzero && work_nonzero)
+				break;
+		}
+
+		if (!display_nonzero && blank_logged < 5)
+		{
+			fprintf(stderr, "[video] draw_frame/work_frame nz=%d/%d at frame %u, painting a debug pattern\n", display_nonzero, work_nonzero, (unsigned)frames_displayed);
+			for (int y = 0; y < SCR_HEIGHT; y++)
+			{
+				for (int x = 0; x < BUF_WIDTH; x++)
+					display[y * BUF_WIDTH + x] = ((x >> 4) ^ (y >> 4)) & 1 ? 0x7bef : 0x001f;
+			}
+			blank_logged++;
+		}
+	}
+	SDL_Rect src = { 0, 0, SCR_WIDTH, SCR_HEIGHT };
 
 	if (renderer && texture)
 	{
-		SDL_UpdateTexture(texture, NULL, display, BUF_WIDTH * sizeof(UINT16));
+		SDL_UpdateTexture(texture, &src, display, BUF_WIDTH * (int)sizeof(UINT16));
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, texture, NULL, NULL);
+		SDL_RenderCopy(renderer, texture, &src, NULL);
 		SDL_RenderPresent(renderer);
 	}
 
@@ -467,25 +543,19 @@ static void handle_event(const SDL_Event *e)
 		case SDL_SCANCODE_Q: set_button(PSP_CTRL_LTRIGGER, down); break;
 		case SDL_SCANCODE_W: set_button(PSP_CTRL_RTRIGGER, down); break;
 		case SDL_SCANCODE_F5:
-			if (down) { option_speedlimit = !option_speedlimit; msg_printf("speedlimit %s", option_speedlimit ? "on" : "off"); }
-			break;
+			if (down) { option_speedlimit = !option_speedlimit; msg_printf("speedlimit %s", option_speedlimit ? "on" : "off"); } break;
 		case SDL_SCANCODE_F6:
-			if (down) { option_vsync = !option_vsync; msg_printf("vsync %s", option_vsync ? "on" : "off"); }
-			break;
+			if (down) { option_vsync = !option_vsync; msg_printf("vsync %s", option_vsync ? "on" : "off"); } break;
 		case SDL_SCANCODE_F7:
-			if (down) { option_stretch = (option_stretch + 1) % 5; msg_printf("stretch mode %d", option_stretch); }
-			break;
+			if (down) { option_stretch = (option_stretch + 1) % 5; msg_printf("stretch mode %d", option_stretch); } break;
 		case SDL_SCANCODE_F8:
-			if (down) { option_showfps = !option_showfps; msg_printf("showfps %s", option_showfps ? "on" : "off"); }
-			break;
+			if (down) { option_showfps = !option_showfps; msg_printf("showfps %s", option_showfps ? "on" : "off"); } break;
 		case SDL_SCANCODE_EQUALS:
 		case SDL_SCANCODE_KP_PLUS:
-			if (down && option_sound_volume < 10) { option_sound_volume++; sound_thread_set_volume(); msg_printf("volume %d", option_sound_volume); }
-			break;
+			if (down && option_sound_volume < 10) { option_sound_volume++; sound_thread_set_volume(); msg_printf("volume %d", option_sound_volume); } break;
 		case SDL_SCANCODE_MINUS:
 		case SDL_SCANCODE_KP_MINUS:
-			if (down && option_sound_volume > 0) { option_sound_volume--; sound_thread_set_volume(); msg_printf("volume %d", option_sound_volume); }
-			break;
+			if (down && option_sound_volume > 0) { option_sound_volume--; sound_thread_set_volume(); msg_printf("volume %d", option_sound_volume); } break;
 		default: break;
 		}
 		break;

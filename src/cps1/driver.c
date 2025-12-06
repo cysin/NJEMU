@@ -8,6 +8,10 @@
 
 #include "cps1.h"
 
+#ifdef PLATFORM_SDL
+void cps1_log_gfx_stats(void);
+#endif
+
 
 /******************************************************************************
 	グローバル構造体
@@ -368,13 +372,35 @@ static void z80_set_bank(UINT32 offset)
 
 TIMER_CALLBACK( cps1_vblank_interrupt )
 {
+	static int vblank_call_count = 0;
+	vblank_call_count++;
 	m68000_set_irq_line(2, HOLD_LINE);
+#if defined(PLATFORM_SDL) && !defined(USE_MUSASHI_M68K)
+	/* Ensure the 68K will actually take the level 2 VBLANK IRQ on desktop,
+	 * even if the game code last wrote a high interrupt mask during self-test. */
+	C68K.flag_I = 0;
+#endif
 	if (!skip_this_frame())
 	{
+		if (vblank_call_count <= 5) {
+			fprintf(stderr, "[vblank %d] about to call cps1_screenrefresh()\n", vblank_call_count);
+			fflush(stderr);
+		}
 		cps1_screenrefresh();
+		if (vblank_call_count <= 5) {
+			fprintf(stderr, "[vblank %d] screenrefresh returned, calling blit_finish()\n", vblank_call_count);
+			fflush(stderr);
+		}
 		blit_finish();
 	}
+	else if (vblank_call_count <= 5) {
+		fprintf(stderr, "[vblank %d] skip_this_frame() returned true, skipping render\n", vblank_call_count);
+		fflush(stderr);
+	}
 	cps1_objram_latch();
+#if defined(PLATFORM_SDL)
+	cps1_log_gfx_stats();
+#endif
 }
 
 
@@ -1526,6 +1552,23 @@ int cps1_driver_init(void)
 
 	z80_init();
 	z80_bank = -1;
+
+#ifdef PLATFORM_SDL
+	if (njemu_debug)
+	{
+		UINT8 *m = memory_region_cpu1;
+		UINT32 reset_sp_be = (m[0] << 24) | (m[1] << 16) | (m[2] << 8) | m[3];
+		UINT32 reset_pc_be = (m[4] << 24) | (m[5] << 16) | (m[6] << 8) | m[7];
+		UINT32 reset_sp_le = (m[3] << 24) | (m[2] << 16) | (m[1] << 8) | m[0];
+		UINT32 reset_pc_le = (m[7] << 24) | (m[6] << 16) | (m[5] << 8) | m[4];
+		UINT16 first_op = (UINT16)((m[reset_pc_be & (memory_length_cpu1 - 1)] << 8) | m[(reset_pc_be + 1) & (memory_length_cpu1 - 1)]);
+		msg_printf("[cps1] reset vec bytes=%02x %02x %02x %02x %02x %02x %02x %02x",
+			m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]);
+		msg_printf("[cps1] reset SP be/le=%08x/%08x PC be/le=%08x/%08x first_op(be pc)=%04x",
+			reset_sp_be, reset_sp_le, reset_pc_be, reset_pc_le, first_op);
+		msg_printf("[cps1] machine_driver_type=%d input=%d init=%d screen=%d", machine_driver_type, machine_input_type, machine_init_type, machine_screen_type);
+	}
+#endif
 
 	if (machine_driver_type == MACHINE_qsound)
 	{

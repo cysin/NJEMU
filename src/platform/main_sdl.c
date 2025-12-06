@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 {
 	char cwd[MAX_PATH];
 
-	if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0)
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0)
 	{
 		fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
 		return 1;

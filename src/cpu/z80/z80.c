@@ -2,38 +2,48 @@
 
 	z80.c
 
-	Z80 CPUインタフェース関数
+	Z80 CPU interface functions
 
 ******************************************************************************/
 
 #include "emumain.h"
-
+#ifdef USE_SUP_Z80
+/* Avoid clashing with the public interface names by temporarily
+ * prefixing the core symbols pulled in from sup/z80. */
+#define z80_init sup_z80_init
+#define z80_step sup_z80_step
+#define z80_gen_nmi sup_z80_gen_nmi
+#define z80_gen_int sup_z80_gen_int
+#include "../sup/z80/z80.h"
+#undef z80_init
+#undef z80_step
+#undef z80_gen_nmi
+#undef z80_gen_int
+#endif
 
 /******************************************************************************
-	Z80インタフェース関数
+	Z80 interface
 ******************************************************************************/
 
-/*--------------------------------------------------------
-	CPU初期化
---------------------------------------------------------*/
+#ifndef USE_SUP_Z80
 
 void z80_init(void)
 {
 	Cz80_Init(&CZ80);
 #if (EMU_SYSTEM == CPS1)
-	Cz80_Set_Fetch(&CZ80, 0x0000, 0xffff, (UINT32)memory_region_cpu2);
+	Cz80_Set_Fetch(&CZ80, 0x0000, 0xffff, memory_region_user2 ? memory_region_user2 : memory_region_cpu2);
+#if CZ80_ENCRYPTED_ROM
 	if (memory_region_user2)
-	{
-		Cz80_Set_Encrypt_Range(&CZ80, 0x0000, 0x8000, (UINT32)memory_region_user2);
-	}
+		Cz80_Set_Encrypt_Range(&CZ80, 0x0000, 0x8000, memory_region_user2);
+#endif
 	Cz80_Set_ReadB(&CZ80, z80_read_memory_8);
 	Cz80_Set_WriteB(&CZ80, z80_write_memory_8);
 #elif (EMU_SYSTEM == CPS2)
-	Cz80_Set_Fetch(&CZ80, 0x0000, 0xffff, (UINT32)memory_region_cpu2);
+	Cz80_Set_Fetch(&CZ80, 0x0000, 0xffff, memory_region_cpu2);
 	Cz80_Set_ReadB(&CZ80, &z80_read_memory_8);
 	Cz80_Set_WriteB(&CZ80, &z80_write_memory_8);
 #elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
-	Cz80_Set_Fetch(&CZ80, 0x0000, 0xffff, (UINT32)memory_region_cpu2);
+	Cz80_Set_Fetch(&CZ80, 0x0000, 0xffff, memory_region_cpu2);
 	Cz80_Set_ReadB(&CZ80, &z80_read_memory_8);
 	Cz80_Set_WriteB(&CZ80, &z80_write_memory_8);
 	Cz80_Set_INPort(&CZ80, &neogeo_z80_port_r);
@@ -41,176 +51,137 @@ void z80_init(void)
 #endif
 }
 
-
-/*--------------------------------------------------------
-	CPUリセット
---------------------------------------------------------*/
-
 void z80_reset(void)
 {
 	Cz80_Reset(&CZ80);
 }
 
-
-/*--------------------------------------------------------
-	CPU停止
---------------------------------------------------------*/
-
 void z80_exit(void)
 {
 }
-
-
-/*--------------------------------------------------------
-	CPU実行
---------------------------------------------------------*/
 
 int z80_execute(int cycles)
 {
 	return Cz80_Exec(&CZ80, cycles);
 }
 
-
-/*--------------------------------------------------------
-	割り込み処理
---------------------------------------------------------*/
-
 void z80_set_irq_line(int irqline, int state)
 {
 	Cz80_Set_IRQ(&CZ80, irqline, state);
 }
-
-
-/*--------------------------------------------------------
-	割り込みコールバック関数設定
---------------------------------------------------------*/
 
 void z80_set_irq_callback(int (*callback)(int line))
 {
 	Cz80_Set_IRQ_Callback(&CZ80, callback);
 }
 
+#else /* USE_SUP_Z80 */
 
-/*--------------------------------------------------------
-	レジスタ取得
---------------------------------------------------------*/
+static z80 SupZ80;
+static int sup_z80_icount;
 
-UINT32 z80_get_reg(int regnum)
+static uint8_t sup_read_byte(void *ctx, uint16_t address)
 {
-	switch (regnum)
+	(void)ctx;
+	return z80_read_memory_8(address);
+}
+
+static void sup_write_byte(void *ctx, uint16_t address, uint8_t data)
+{
+	(void)ctx;
+	z80_write_memory_8(address, data);
+}
+
+static uint8_t sup_port_in(z80 *cpu, uint8_t port)
+{
+	(void)cpu;
+	(void)port;
+	return 0xff;
+}
+
+static void sup_port_out(z80 *cpu, uint8_t port, uint8_t value)
+{
+	(void)cpu;
+	(void)port;
+	(void)value;
+}
+
+static void sup_setup_callbacks(void)
+{
+	SupZ80.read_byte  = sup_read_byte;
+	SupZ80.write_byte = sup_write_byte;
+	SupZ80.port_in    = sup_port_in;
+	SupZ80.port_out   = sup_port_out;
+	SupZ80.userdata   = NULL;
+}
+
+void z80_init(void)
+{
+	sup_z80_init(&SupZ80);
+	sup_setup_callbacks();
+}
+
+void z80_reset(void)
+{
+	sup_z80_init(&SupZ80);
+	sup_setup_callbacks();
+}
+
+void z80_exit(void)
+{
+}
+
+int z80_execute(int cycles)
+{
+	unsigned long start = SupZ80.cyc;
+	sup_z80_icount = cycles;
+
+	while (sup_z80_icount > 0)
 	{
-	case Z80_PC:   return Cz80_Get_Reg(&CZ80, CZ80_PC);
-	case Z80_SP:   return Cz80_Get_Reg(&CZ80, CZ80_SP);
-	case Z80_AF:   return Cz80_Get_Reg(&CZ80, CZ80_AF);
-	case Z80_BC:   return Cz80_Get_Reg(&CZ80, CZ80_BC);
-	case Z80_DE:   return Cz80_Get_Reg(&CZ80, CZ80_DE);
-	case Z80_HL:   return Cz80_Get_Reg(&CZ80, CZ80_HL);
-	case Z80_IX:   return Cz80_Get_Reg(&CZ80, CZ80_IX);
-	case Z80_IY:   return Cz80_Get_Reg(&CZ80, CZ80_IY);
-	case Z80_AF2:  return Cz80_Get_Reg(&CZ80, CZ80_AF2);
-	case Z80_BC2:  return Cz80_Get_Reg(&CZ80, CZ80_BC2);
-	case Z80_DE2:  return Cz80_Get_Reg(&CZ80, CZ80_DE2);
-	case Z80_HL2:  return Cz80_Get_Reg(&CZ80, CZ80_HL2);
-	case Z80_R:    return Cz80_Get_Reg(&CZ80, CZ80_R);
-	case Z80_I:    return Cz80_Get_Reg(&CZ80, CZ80_I);
-	case Z80_IM:   return Cz80_Get_Reg(&CZ80, CZ80_IM);
-	case Z80_IFF1: return Cz80_Get_Reg(&CZ80, CZ80_IFF1);
-	case Z80_IFF2: return Cz80_Get_Reg(&CZ80, CZ80_IFF2);
-	case Z80_HALT: return Cz80_Get_Reg(&CZ80, CZ80_HALT);
-	case Z80_IRQ_STATE: return Cz80_Get_Reg(&CZ80, CZ80_IRQ);
-	default: return 0;
+		unsigned long before = SupZ80.cyc;
+
+		sup_z80_step(&SupZ80);
+
+		unsigned long used = SupZ80.cyc - before;
+		if (used == 0)
+			used = 1;
+
+		sup_z80_icount -= (int)used;
+
+		if (sup_z80_icount < 0)
+			sup_z80_icount = 0;
 	}
+
+	return (int)(SupZ80.cyc - start);
 }
 
-
-/*--------------------------------------------------------
-	レジスタ設定
---------------------------------------------------------*/
-
-void z80_set_reg(int regnum, UINT32 val)
+void z80_set_irq_line(int irqline, int state)
 {
-	switch (regnum)
+	if (state == CLEAR_LINE)
 	{
-	case Z80_PC:   Cz80_Set_Reg(&CZ80, CZ80_PC, val); break;
-	case Z80_SP:   Cz80_Set_Reg(&CZ80, CZ80_SP, val); break;
-	case Z80_AF:   Cz80_Set_Reg(&CZ80, CZ80_AF, val); break;
-	case Z80_BC:   Cz80_Set_Reg(&CZ80, CZ80_BC, val); break;
-	case Z80_DE:   Cz80_Set_Reg(&CZ80, CZ80_DE, val); break;
-	case Z80_HL:   Cz80_Set_Reg(&CZ80, CZ80_HL, val); break;
-	case Z80_IX:   Cz80_Set_Reg(&CZ80, CZ80_IX, val); break;
-	case Z80_IY:   Cz80_Set_Reg(&CZ80, CZ80_IY, val); break;
-	case Z80_AF2:  Cz80_Set_Reg(&CZ80, CZ80_AF2, val); break;
-	case Z80_BC2:  Cz80_Set_Reg(&CZ80, CZ80_BC2, val); break;
-	case Z80_DE2:  Cz80_Set_Reg(&CZ80, CZ80_DE2, val); break;
-	case Z80_HL2:  Cz80_Set_Reg(&CZ80, CZ80_HL2, val); break;
-	case Z80_R:    Cz80_Set_Reg(&CZ80, CZ80_R, val); break;
-	case Z80_I:    Cz80_Set_Reg(&CZ80, CZ80_I, val); break;
-	case Z80_IM:   Cz80_Set_Reg(&CZ80, CZ80_IM, val); break;
-	case Z80_IFF1: Cz80_Set_Reg(&CZ80, CZ80_IFF1, val); break;
-	case Z80_IFF2: Cz80_Set_Reg(&CZ80, CZ80_IFF2, val); break;
-	case Z80_HALT: Cz80_Set_Reg(&CZ80, CZ80_HALT, val); break;
-	case Z80_IRQ_STATE: Cz80_Set_Reg(&CZ80, CZ80_IRQ, val); break;
-	default: break;
+		SupZ80.int_pending = 0;
+		SupZ80.nmi_pending = 0;
+		return;
 	}
+
+	if (irqline == IRQ_LINE_NMI)
+		sup_z80_gen_nmi(&SupZ80);
+	else
+		sup_z80_gen_int(&SupZ80, 0xff);
 }
 
-
-/*------------------------------------------------------
-	セーブ/ロード ステート
-------------------------------------------------------*/
-
-#ifdef SAVE_STATE
-
-STATE_SAVE( z80 )
+void z80_set_irq_callback(int (*callback)(int line))
 {
-	UINT32 pc = Cz80_Get_Reg(&CZ80, CZ80_PC);
-
-	state_save_word(&CZ80.BC.W, 1);
-	state_save_word(&CZ80.DE.W, 1);
-	state_save_word(&CZ80.HL.W, 1);
-	state_save_word(&CZ80.AF.W, 1);
-	state_save_word(&CZ80.IX.W, 1);
-	state_save_word(&CZ80.IY.W, 1);
-	state_save_word(&CZ80.SP.W, 1);
-	state_save_long(&pc, 1);
-	state_save_word(&CZ80.BC2.W, 1);
-	state_save_word(&CZ80.DE2.W, 1);
-	state_save_word(&CZ80.HL2.W, 1);
-	state_save_word(&CZ80.AF2.W, 1);
-	state_save_word(&CZ80.R.W, 1);
-	state_save_word(&CZ80.IFF.W, 1);
-	state_save_byte(&CZ80.I, 1);
-	state_save_byte(&CZ80.IM, 1);
-	state_save_byte(&CZ80.HaltState, 1);
-	state_save_long(&CZ80.IRQLine, 1);
-	state_save_long(&CZ80.IRQState, 1);
+	(void)callback;
 }
 
-STATE_LOAD( z80 )
+#endif /* USE_SUP_Z80 */
+
+int *z80_get_icount_ptr(void)
 {
-	UINT32 pc;
-
-	state_load_word(&CZ80.BC.W, 1);
-	state_load_word(&CZ80.DE.W, 1);
-	state_load_word(&CZ80.HL.W, 1);
-	state_load_word(&CZ80.AF.W, 1);
-	state_load_word(&CZ80.IX.W, 1);
-	state_load_word(&CZ80.IY.W, 1);
-	state_load_word(&CZ80.SP.W, 1);
-	state_load_long(&pc, 1);
-	state_load_word(&CZ80.BC2.W, 1);
-	state_load_word(&CZ80.DE2.W, 1);
-	state_load_word(&CZ80.HL2.W, 1);
-	state_load_word(&CZ80.AF2.W, 1);
-	state_load_word(&CZ80.R.W, 1);
-	state_load_word(&CZ80.IFF.W, 1);
-	state_load_byte(&CZ80.I, 1);
-	state_load_byte(&CZ80.IM, 1);
-	state_load_byte(&CZ80.HaltState, 1);
-	state_load_long(&CZ80.IRQLine, 1);
-	state_load_long(&CZ80.IRQState, 1);
-
-	Cz80_Set_Reg(&CZ80, CZ80_PC, pc);
+#ifdef USE_SUP_Z80
+	return &sup_z80_icount;
+#else
+	return &CZ80.ICount;
+#endif
 }
-
-#endif /* SAVE_STATE */

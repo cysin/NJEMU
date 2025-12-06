@@ -17,7 +17,11 @@
 
 #define MAKE_FIX_KEY(code, attr)	(code | (attr << 28))
 #define MAKE_SPR_KEY(code, attr)	(code | ((attr & 0x0f00) << 20))
+#ifdef PLATFORM_SDL
+#define PSP_UNCACHE_PTR(p)		(p)
+#else
 #define PSP_UNCACHE_PTR(p)			(((UINT32)(p)) | 0x40000000)
+#endif
 
 
 /******************************************************************************

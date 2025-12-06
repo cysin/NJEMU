@@ -14,8 +14,8 @@
 
 #define READ_BYTE(mem, offset)			mem[offset ^ 1]
 #define READ_WORD(mem, offset)			*(UINT16 *)&mem[offset]
-#define WRITE_BYTE(mem, offset, data)	mem[offset ^ 1] = data
-#define WRITE_WORD(mem, offset, data)	*(UINT16 *)&mem[offset] = data
+#define WRITE_BYTE(mem, offset, data)	mem[offset ^ 1] = (data)
+#define WRITE_WORD(mem, offset, data)	*(UINT16 *)&mem[offset] = (data)
 
 #define READ_MIRROR_BYTE(mem, offset, amask)			mem[(offset & amask) ^ 1]
 #define READ_MIRROR_WORD(mem, offset, amask)			*(UINT16 *)&mem[offset & amask]

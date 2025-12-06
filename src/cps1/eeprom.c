@@ -214,6 +214,10 @@ static void EEPROM_reset(void)
 
 	serial_count = 0;
 	sending = 0;
+	if (!intf)
+	{
+		return;
+	}
 	reset_delay = intf->reset_delay;	/* delay a little before returning setting data to 1 (needed by wbeachvl) */
 }
 

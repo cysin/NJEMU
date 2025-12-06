@@ -9,7 +9,9 @@
 #ifndef Z80_H
 #define Z80_H
 
+#ifndef USE_SUP_Z80
 #include "cz80.h"
+#endif
 
 // MAMEŒİŠ·‚ÌƒŒƒWƒXƒ^”Ô† (ˆê•”–¢‘Î‰)
 enum
@@ -28,6 +30,7 @@ void z80_set_irq_line(int irqline, int state);
 void z80_set_irq_callback(int (*callback)(int line));
 UINT32  z80_get_reg(int regnum);
 void z80_set_reg(int regnum, UINT32 val);
+int *z80_get_icount_ptr(void);
 
 #ifdef SAVE_STATE
 STATE_SAVE( z80 );

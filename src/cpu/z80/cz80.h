@@ -11,6 +11,8 @@
 #ifndef CZ80_H
 #define CZ80_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,7 +57,13 @@ extern "C" {
 #define CZ80_LITTLE_ENDIAN		1
 #define CZ80_USE_JUMPTABLE		1
 #define CZ80_BIG_FLAGS_ARRAY	1
-#ifdef BUILD_CPS1PSP
+#ifdef PLATFORM_SDL
+#undef CZ80_USE_JUMPTABLE
+#define CZ80_USE_JUMPTABLE		0
+#endif
+#if defined(PLATFORM_SDL)
+#define CZ80_ENCRYPTED_ROM		0
+#elif defined(BUILD_CPS1PSP)
 #define CZ80_ENCRYPTED_ROM		1
 #else
 #define CZ80_ENCRYPTED_ROM		0
@@ -118,7 +126,7 @@ extern "C" {
 #define zlSP		CPU->SP.B.L
 #define zhSP		CPU->SP.B.H
 
-#define zRealPC		(PC - CPU->BasePC)
+#define zRealPC		((UINT32)(PC - CPU->BasePC))
 #define zPC			PC
 
 #define zI			CPU->I
@@ -221,7 +229,7 @@ typedef struct cz80_t
 	union16 IX;
 	union16 IY;
 	union16 SP;
-	UINT32 PC;
+	uintptr_t PC;
 
 	union16 BC2;
 	union16 DE2;
@@ -241,11 +249,11 @@ typedef struct cz80_t
 	INT32 ICount;
 	INT32 ExtraCycles;
 
-	UINT32 BasePC;
-	UINT32 Fetch[CZ80_FETCH_BANK];
+	uintptr_t BasePC;
+	uintptr_t Fetch[CZ80_FETCH_BANK];
 #if CZ80_ENCRYPTED_ROM
-	INT32 OPBase;
-	INT32 OPFetch[CZ80_FETCH_BANK];
+	intptr_t OPBase;
+	intptr_t OPFetch[CZ80_FETCH_BANK];
 #endif
 
 	UINT8 *pzR8[8];
@@ -283,9 +291,9 @@ void Cz80_Set_IRQ(cz80_struc *CPU, INT32 line, INT32 state);
 UINT32  Cz80_Get_Reg(cz80_struc *CPU, INT32 regnum);
 void Cz80_Set_Reg(cz80_struc *CPU, INT32 regnum, UINT32 value);
 
-void Cz80_Set_Fetch(cz80_struc *CPU, UINT32 low_adr, UINT32 high_adr, UINT32 fetch_adr);
+void Cz80_Set_Fetch(cz80_struc *CPU, UINT32 low_adr, UINT32 high_adr, void *fetch_adr);
 #if CZ80_ENCRYPTED_ROM
-void Cz80_Set_Encrypt_Range(cz80_struc *CPU, UINT32 low_adr, UINT32 high_adr, UINT32 decrypted_rom);
+void Cz80_Set_Encrypt_Range(cz80_struc *CPU, UINT32 low_adr, UINT32 high_adr, void *decrypted_rom);
 #endif
 
 void Cz80_Set_ReadB(cz80_struc *CPU, UINT8 (*Func)(UINT32 address));

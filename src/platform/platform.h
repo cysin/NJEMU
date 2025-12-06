@@ -55,7 +55,8 @@ enum { ICON_SYSTEM = 0, WP_LOGO = 0 };
 #define LANG_CHINESE_TRADITIONAL 3
 #define COLOR_BLACK 0, 0, 0
 #define COLOR_WHITE 255, 255, 255
-#define MAKECOL15(r, g, b) (((b & 0xf8) << 7) | ((g & 0xf8) << 2) | ((r & 0xf8) >> 3))
+extern UINT16 make_col_15(int r, int g, int b);
+#define MAKECOL15(r, g, b) make_col_15(r, g, b)
 
 /* Video helper macros/structs mirrored from psp/video.h */
 #define SWIZZLED_8x8(tex, idx)        &(tex[(idx) << 6])

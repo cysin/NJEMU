@@ -16,7 +16,11 @@
 #define TEXTURE_HEIGHT	512
 
 #define MAKE_KEY(code, attr)	(code | ((attr & 0x0f) << 28))
+#ifdef PLATFORM_SDL
+#define PSP_UNCACHE_PTR(p)	(p)
+#else
 #define PSP_UNCACHE_PTR(p)		(((UINT32)(p)) | 0x40000000)
+#endif
 
 
 /******************************************************************************
@@ -1515,10 +1519,15 @@ void blit_set_clip_scroll2(INT16 min_y, INT16 max_y)
 	scroll2_min_y = min_y;
 	scroll2_max_y = max_y + 1;
 
+#ifdef PLATFORM_SDL
+	/* SDL path always uses software blitter; GU textures are not populated. */
+	blit_draw_scroll2 = blit_draw_scroll2_software;
+#else
 	if (scroll2_max_y - scroll2_min_y >= 16)
 		blit_draw_scroll2 = blit_draw_scroll2_hardware;
 	else
 		blit_draw_scroll2 = blit_draw_scroll2_software;
+#endif
 }
 
 

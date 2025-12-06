@@ -53,6 +53,37 @@
 #define WRITE_REG_16(A, D)		*(UINT16 *)(&A) = D
 #define WRITE_REG_32(A, D)		A = D
 
+#ifdef PLATFORM_SDL
+/* On SDL/desktop builds, avoid raw host dereferences for opcode fetches to
+ * sidestep SIGBUS on mis-mapped or unmapped pages. Always funnel through the
+ * CPU-provided PC-relative accessors. */
+static inline UINT8 c68k_read_imm_8(c68k_struc *CPU, uintptr_t PC)
+{
+	UINT32 adr = (UINT32)(PC - CPU->BasePC);
+	return CPU->Read_Byte_PC_Relative(adr);
+}
+
+static inline UINT16 c68k_read_imm_16(c68k_struc *CPU, uintptr_t PC)
+{
+	UINT32 adr = (UINT32)(PC - CPU->BasePC);
+	return CPU->Read_Word_PC_Relative(adr);
+}
+
+static inline UINT32 c68k_read_imm_32(c68k_struc *CPU, uintptr_t PC)
+{
+	UINT32 adr = (UINT32)(PC - CPU->BasePC);
+	return (CPU->Read_Word_PC_Relative(adr) << 16) | CPU->Read_Word_PC_Relative(adr + 2);
+}
+
+#define READ_IMM_8()			c68k_read_imm_8(CPU, PC)
+#define READ_IMM_16()			c68k_read_imm_16(CPU, PC)
+#define READ_IMM_32()			c68k_read_imm_32(CPU, PC)
+#define READSX_IMM_8()			MAKE_INT_8(READ_IMM_8())
+#define READSX_IMM_16()			MAKE_INT_16(READ_IMM_16())
+#define READSX_IMM_32()			MAKE_INT_32(READ_IMM_32())
+
+#else  /* PLATFORM_SDL */
+
 #define READ_IMM_8()			(*(UINT8 *)PC)
 #define READ_IMM_16()			(*(UINT16 *)PC)
 #ifdef C68K_BIG_ENDIAN
@@ -64,6 +95,8 @@
 #define READSX_IMM_8()			(INT32)(*(INT8 *)PC)
 #define READSX_IMM_16()			(INT32)(*(INT16 *)PC)
 #define READSX_IMM_32()			MAKE_INT_32(READ_IMM_32())
+
+#endif /* PLATFORM_SDL */
 
 #define READ_MEM_8(A)			CPU->Read_Byte(A)
 #define READ_MEM_16(A)			CPU->Read_Word(A)
@@ -135,7 +168,7 @@
 	RELEASE_CYCLES();														\
 	goto C68k_Check_Interrupt;
 
-#define GET_PC()				(PC - CPU->BasePC)
+#define GET_PC()				((UINT32)(PC - CPU->BasePC))
 
 #define SET_PC(A)															\
 	CPU->BasePC = CPU->Fetch[((A) >> C68K_FETCH_SFT) & C68K_FETCH_MASK];	\
@@ -1080,16 +1113,16 @@
 {																			\
 	EA_READ_I(16, NA, res)													\
 	EA_##mode(NA, Y)														\
-	src = (UINT32)(&D0);													\
+	UINT32 *reg = &D0;													\
 	dst = adr;																\
 	do																		\
 	{																		\
 		if (res & 1)														\
 		{																	\
-			WRITE_MEM_##size(adr, *(u##size *)src);							\
+			WRITE_MEM_##size(adr, *(u##size *)reg);							\
 			adr += (size / 8);												\
 		}																	\
-		src += 4;															\
+		reg++;															\
 	} while (res >>= 1);													\
 	RET(MOVEM_CLOCKS_RE_##mode + ((adr - dst) << 1))						\
 }
@@ -1098,16 +1131,16 @@
 {																			\
 	EA_READ_I(16, NA, res)													\
 	adr = A##y;																\
-	src = (UINT32)(&A7);													\
+	UINT32 *reg = &A7;													\
 	dst = adr;																\
 	do																		\
 	{																		\
 		if (res & 1)														\
 		{																	\
 			adr -= (size / 8);												\
-			WRITE_MEM_##size##PD(adr, *(u##size *)src);						\
+			WRITE_MEM_##size##PD(adr, *(u##size *)reg);						\
 		}																	\
-		src -= 4;															\
+		reg--;															\
 	} while (res >>= 1);													\
 	A##y = adr;																\
 	RET(MOVEM_CLOCKS_RE_PD + ((dst - adr) << 1))							\
@@ -1117,16 +1150,16 @@
 {																			\
 	EA_READ_I(16, NA, res)													\
 	EA_##mode(NA, Y)														\
-	src = (UINT32)(&D0);													\
+	UINT32 *reg = &D0;													\
 	dst = adr;																\
 	do																		\
 	{																		\
 		if (res & 1)														\
 		{																	\
-			*(INT32 *)src = READSX_##mode(size, NA);						\
+			*(INT32 *)reg = READSX_##mode(size, NA);						\
 			adr += (size / 8);												\
 		}																	\
-		src += 4;															\
+		reg++;															\
 	} while (res >>= 1);													\
 	RET(MOVEM_CLOCKS_ER_##mode + ((adr - dst) << 1))						\
 }
@@ -1135,16 +1168,16 @@
 {																			\
 	EA_READ_I(16, NA, res)													\
 	adr = A##y;																\
-	src = (UINT32)(&D0);													\
+	UINT32 *reg = &D0;													\
 	dst = adr;																\
 	do																		\
 	{																		\
 		if (res & 1)														\
 		{																	\
-			*(INT32 *)src = READSX_MEM_##size(adr);							\
+			*(INT32 *)reg = READSX_MEM_##size(adr);							\
 			adr += (size / 8);												\
 		}																	\
-		src += 4;															\
+		reg++;															\
 	} while (res >>= 1);													\
 	A##y = adr;																\
 	RET(MOVEM_CLOCKS_ER_PI + ((adr - dst) << 1))							\

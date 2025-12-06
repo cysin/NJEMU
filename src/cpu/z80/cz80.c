@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 #include "emumain.h"
 #include "cz80.h"
 
@@ -93,7 +94,7 @@ void Cz80_Init(cz80_struc *CPU)
 
 	for (i = 0; i < CZ80_FETCH_BANK; i++)
 	{
-		CPU->Fetch[i] = (UINT32)cz80_bad_address;
+		CPU->Fetch[i] = (UINT8 *)cz80_bad_address;
 #if CZ80_ENCRYPTED_ROM
 		CPU->OPFetch[i] = 0;
 #endif
@@ -197,7 +198,7 @@ void Cz80_Init(cz80_struc *CPU)
 
 void Cz80_Reset(cz80_struc *CPU)
 {
-	memset(CPU, 0, (INT32)&CPU->BasePC - (INT32)CPU);
+	memset(CPU, 0, offsetof(cz80_struc, BasePC));
 	Cz80_Set_Reg(CPU, CZ80_PC, 0);
 }
 
@@ -212,9 +213,9 @@ INT32 Cz80_Exec(cz80_struc *CPU, INT32 cycles)
 #include "cz80jmp.c"
 #endif
 
-	UINT32 PC;
+	uintptr_t PC;
 #if CZ80_ENCRYPTED_ROM
-	INT32 OPBase;
+	intptr_t OPBase;
 #endif
 	UINT32 Opcode;
 	UINT32 adr = 0;
@@ -286,9 +287,9 @@ void Cz80_Set_IRQ(cz80_struc *CPU, INT32 line, INT32 state)
 
 		if (state != CLEAR_LINE)
 		{
-			UINT32 PC = CPU->PC;
+			uintptr_t PC = CPU->PC;
 #if CZ80_ENCRYPTED_ROM
-			INT32 OPBase = CPU->OPBase;
+			UINT8 *OPBase = CPU->OPBase;
 #endif
 
 			CPU->IRQLine = line;
@@ -310,7 +311,7 @@ UINT32 Cz80_Get_Reg(cz80_struc *CPU, INT32 regnum)
 {
 	switch (regnum)
 	{
-	case CZ80_PC:   return (CPU->PC - CPU->BasePC);
+	case CZ80_PC:   return (UINT32)(CPU->PC - CPU->BasePC);
 	case CZ80_SP:   return zSP;
 	case CZ80_AF:   return zAF;
 	case CZ80_BC:   return zBC;
@@ -347,7 +348,7 @@ void Cz80_Set_Reg(cz80_struc *CPU, INT32 regnum, UINT32 val)
 #if CZ80_ENCRYPTED_ROM
 		CPU->OPBase = CPU->OPFetch[val >> CZ80_FETCH_SFT];
 #endif
-		CPU->PC = val + CPU->BasePC;
+		CPU->PC = CPU->BasePC + val;
 		break;
 
 	case CZ80_SP:   zSP = val; break;
@@ -377,17 +378,18 @@ void Cz80_Set_Reg(cz80_struc *CPU, INT32 regnum, UINT32 val)
 	フェッチアドレス設定
 --------------------------------------------------------*/
 
-void Cz80_Set_Fetch(cz80_struc *CPU, UINT32 low_adr, UINT32 high_adr, UINT32 fetch_adr)
+void Cz80_Set_Fetch(cz80_struc *CPU, UINT32 low_adr, UINT32 high_adr, void *fetch_adr)
 {
 	int i, j;
+	uintptr_t base = (uintptr_t)fetch_adr;
 
 	i = low_adr >> CZ80_FETCH_SFT;
 	j = high_adr >> CZ80_FETCH_SFT;
-	fetch_adr -= i << CZ80_FETCH_SFT;
+	base -= (uintptr_t)i << CZ80_FETCH_SFT;
 
 	while (i <= j)
 	{
-		CPU->Fetch[i] = fetch_adr;
+		CPU->Fetch[i] = base;
 #if CZ80_ENCRYPTED_ROM
 		CPU->OPFetch[i] = 0;
 #endif
@@ -401,17 +403,18 @@ void Cz80_Set_Fetch(cz80_struc *CPU, UINT32 low_adr, UINT32 high_adr, UINT32 fet
 --------------------------------------------------------*/
 
 #if CZ80_ENCRYPTED_ROM
-void Cz80_Set_Encrypt_Range(cz80_struc *CPU, UINT32 low_adr, UINT32 high_adr, UINT32 decrypted_rom)
+void Cz80_Set_Encrypt_Range(cz80_struc *CPU, UINT32 low_adr, UINT32 high_adr, void *decrypted_rom)
 {
 	int i, j;
+	uintptr_t base = (uintptr_t)decrypted_rom;
 
 	i = low_adr >> CZ80_FETCH_SFT;
 	j = high_adr >> CZ80_FETCH_SFT;
-	decrypted_rom -= i << CZ80_FETCH_SFT;
+	base -= (uintptr_t)i << CZ80_FETCH_SFT;
 
 	while (i <= j)
 	{
-		CPU->OPFetch[i] = (INT32)decrypted_rom - (INT32)CPU->Fetch[i];
+		CPU->OPFetch[i] = (intptr_t)base - (intptr_t)CPU->Fetch[i];
 		i++;
 	}
 }

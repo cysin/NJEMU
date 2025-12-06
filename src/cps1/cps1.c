@@ -187,7 +187,6 @@ static void apply_cheat(void) { }
 
 static void cps1_run(void)
 {
-	int frame_count_debug = 0;
 	while (Loop >= LOOP_RESET)
 	{
 		cps1_reset();
@@ -203,7 +202,7 @@ static void cps1_run(void)
 
 				autoframeskip_reset();
 			}
-			if (njemu_debug) msg_printf("[cps1] frame %d", frame_count_debug);
+			if (njemu_debug) msg_printf("[cps1] frame %u", timer_get_currentframe());
 			apply_cheat();
 			if (njemu_debug) msg_printf("[cps1] timer_update_cpu");
 			timer_update_cpu();
@@ -211,12 +210,6 @@ static void cps1_run(void)
 			update_screen();
 			if (njemu_debug) msg_printf("[cps1] update_inputport");
 			update_inputport();
-			frame_count_debug++;
-			if (njemu_debug && frame_count_debug > 3)
-			{
-				Loop = LOOP_EXIT;
-				break;
-			}
 		}
 
 		video_clear_screen();

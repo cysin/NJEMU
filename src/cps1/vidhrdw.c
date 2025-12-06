@@ -2,7 +2,7 @@
 
 	vidhrdw.c
 
-	CPS1 ƒrƒfƒIƒGƒ~ƒ…ƒŒ[ƒVƒ‡ƒ“
+	CPS1 ï¿½rï¿½fï¿½Iï¿½Gï¿½~ï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½Vï¿½ï¿½ï¿½ï¿½
 
 ******************************************************************************/
 
@@ -10,7 +10,7 @@
 
 
 /******************************************************************************
-	ƒOƒ[ƒoƒ‹•Ï”
+	ï¿½Oï¿½ï¿½ï¿½[ï¿½oï¿½ï¿½ï¿½Ïï¿½
 ******************************************************************************/
 
 int cps_flip_screen;
@@ -21,7 +21,7 @@ int cps_raster_enable;
 
 
 /******************************************************************************
-	ƒ[ƒJƒ‹•Ï”
+	ï¿½ï¿½ï¿½[ï¿½Jï¿½ï¿½ï¿½Ïï¿½
 ******************************************************************************/
 
 #define cps1_scroll_size		0x4000		/* scroll1, scroll2, scroll3 */
@@ -48,6 +48,8 @@ static UINT32 cps1_object_num;									/* object total sprites num */
 static UINT8  *cps1_object_pen_usage;							/* object sprites pen usage */
 static UINT8  ALIGN_DATA cps1_scroll2_pen_usage[0x10000];		/* scroll2 sprites pen usage */
 static UINT16 ALIGN_DATA cps1_scroll_pen_usage[4][0x10000];	/* scroll sprites pen usage */
+
+static UINT32 gfx1_nonzero_count = 0;
 
 #define cps1_obj_size			0x800
 #define cps1_max_obj			(cps1_obj_size >> 3)
@@ -83,6 +85,7 @@ static UINT16 ALIGN_DATA video_clut16[65536];
 UINT16 ALIGN_PSPDATA video_palette[cps1_palette_size >> 1];
 
 
+
 /* CPS1 output port */
 #define CPS1_OBJ_BASE			0x00    /* Base address of objects */
 #define CPS1_SCROLL1_BASE		0x02    /* Base address of scroll 1 */
@@ -109,14 +112,14 @@ UINT16 ALIGN_PSPDATA video_palette[cps1_palette_size >> 1];
 
 
 /*------------------------------------------------------
-	CPSƒ|[ƒg“Ç‚İ‚İ
+	CPSï¿½|ï¿½[ï¿½gï¿½Ç‚İï¿½ï¿½ï¿½
 ------------------------------------------------------*/
 
 #define cps1_port(offset)	cps1_output[(offset) >> 1]
 
 
 /******************************************************************************
-	CPS1 ƒƒ‚ƒŠƒnƒ“ƒhƒ‰
+	CPS1 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½nï¿½ï¿½ï¿½hï¿½ï¿½
 ******************************************************************************/
 
 READ16_HANDLER( cps1_output_r )
@@ -163,11 +166,11 @@ WRITE16_HANDLER( cps1_output_w )
 
 
 /******************************************************************************
-	CPS1 ƒrƒfƒI•`‰æˆ—
+	CPS1 ï¿½rï¿½fï¿½Iï¿½`ï¿½æˆï¿½ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------
-	ƒJƒ‰[ƒe[ƒuƒ‹ì¬
+	ï¿½Jï¿½ï¿½ï¿½[ï¿½eï¿½[ï¿½uï¿½ï¿½ï¿½ì¬
 ------------------------------------------------------*/
 
 static void cps1_init_tables(void)
@@ -211,11 +214,12 @@ static void cps1_init_tables(void)
 
 
 /*------------------------------------------------------
-	ƒXƒvƒ‰ƒCƒgƒfƒR[ƒh
+	ï¿½Xï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½fï¿½Rï¿½[ï¿½h
 ------------------------------------------------------*/
 
 static int cps1_gfx_decode(void)
 {
+	gfx1_nonzero_count = 0;
 	UINT8 *gfx = memory_region_gfx1;
 	UINT32 size = memory_length_gfx1;
 	UINT32 i, j, k, count;
@@ -230,6 +234,7 @@ static int cps1_gfx_decode(void)
 	for (; i < size >> 2; i++)
 	{
 		UINT32 src = gfx[4 * i] + (gfx[4 * i + 1] << 8) + (gfx[4 * i + 2] << 16) + (gfx[4 * i + 3] << 24);
+		if (src) gfx1_nonzero_count++;
 		UINT32 dw = 0;
 
 		for (j = 0; j < 8; j++)
@@ -442,7 +447,7 @@ scroll3_check:
 
 
 /*------------------------------------------------------
-	CPS1ƒx[ƒXƒIƒtƒZƒbƒgæ“¾
+	CPS1ï¿½xï¿½[ï¿½Xï¿½Iï¿½tï¿½Zï¿½bï¿½gï¿½æ“¾
 ------------------------------------------------------*/
 
 static UINT16 *cps1_base(int offset, int address_mask)
@@ -454,7 +459,7 @@ static UINT16 *cps1_base(int offset, int address_mask)
 
 
 /*------------------------------------------------------
-	CPS1ƒrƒfƒI‰Šú‰»
+	CPS1ï¿½rï¿½fï¿½Iï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------*/
 
 int cps1_video_init(void)
@@ -500,10 +505,28 @@ int cps1_video_init(void)
 	return cps1_gfx_decode();
 }
 
+void cps1_log_gfx_stats(void)
+{
+	UINT32 nz_obj = 0, nz_scroll2 = 0, nz_scroll[4] = {0,0,0,0};
+	UINT32 i;
 
-/*------------------------------------------------------
-	CPS1ƒrƒfƒII—¹
-------------------------------------------------------*/
+	for (i = 0; i < cps1_object_num; i++)
+		nz_obj += (cps1_object_pen_usage[i] != 0);
+	for (i = 0; i < 0x10000; i++)
+	{
+		nz_scroll2 += (cps1_scroll2_pen_usage[i] != 0);
+		nz_scroll[0] += (cps1_scroll_pen_usage[0][i] != 0);
+		nz_scroll[1] += (cps1_scroll_pen_usage[1][i] != 0);
+		nz_scroll[2] += (cps1_scroll_pen_usage[2][i] != 0);
+		nz_scroll[3] += (cps1_scroll_pen_usage[3][i] != 0);
+	}
+
+	fprintf(stderr,
+		"[cps1] gfx1 nonzero dwords %u / %u | obj %u/%u sc2 %u/65536 sc1 %u sc1b %u sc2p %u sc3 %u\n",
+		gfx1_nonzero_count, (unsigned)(memory_length_gfx1/4),
+		nz_obj, cps1_object_num, nz_scroll2,
+		nz_scroll[0], nz_scroll[1], nz_scroll[2], nz_scroll[3]);
+}
 
 void cps1_video_exit(void)
 {
@@ -515,7 +538,7 @@ void cps1_video_exit(void)
 
 
 /*------------------------------------------------------
-	CPS1ƒrƒfƒIƒŠƒZƒbƒg
+	CPS1ï¿½rï¿½fï¿½Iï¿½ï¿½ï¿½Zï¿½bï¿½g
 ------------------------------------------------------*/
 
 void cps1_video_reset(void)
@@ -558,7 +581,7 @@ void cps1_video_reset(void)
 
 
 /*------------------------------------------------------
-	ƒpƒŒƒbƒg
+	ï¿½pï¿½ï¿½ï¿½bï¿½g
 ------------------------------------------------------*/
 
 static void cps1_build_palette(void)
@@ -606,15 +629,15 @@ static void cps1_build_palette(void)
 			video_palette[offset] = video_clut16[palette];
 		}
 	}
+
 }
 
-
 /******************************************************************************
-  Object (16x16)
+	Object (16x16)
 ******************************************************************************/
 
 /*------------------------------------------------------
-	object•`‰æ
+	objectï¿½`ï¿½ï¿½
 ------------------------------------------------------*/
 
 #define SCAN_OBJECT(blit_func)												\
@@ -643,7 +666,7 @@ static void cps1_build_palette(void)
 		{																	\
 			ncode = (code & ~0xf) + ((code + x) & 0xf) + (y << 4);			\
 																			\
-			if (cps1_object_pen_usage[ncode])								\
+			if ((cps1_object_pen_usage[ncode]))								\
 			{																\
 				if (attr & 0x20)											\
 					nsx = sx + ((nx - x) << 4);								\
@@ -661,7 +684,7 @@ static void cps1_build_palette(void)
 	}
 
 /*------------------------------------------------------
-	•`‰æ
+	ï¿½`ï¿½ï¿½
 ------------------------------------------------------*/
 
 static struct cps1_object_t *object1;
@@ -671,8 +694,16 @@ static void cps1_render_object(void)
 	INT16 x, y, sx, sy, nx, ny, nsx, nsy;
 	UINT16 attr;
 	UINT32 code, ncode;
+	static int debug_count = 0;
+	int loop_count = 0, skipped_code = 0, skipped_pen = 0;
 
 	object1 = cps1_last_object;
+
+	if (debug_count < 5) {
+		fprintf(stderr, "[render_object] start: cps1_last_object=%p cps1_object=%p diff=%ld obj_num=%u\n",
+			(void*)cps1_last_object, (void*)cps1_object,
+			(long)(cps1_last_object - cps1_object), cps1_object_num);
+	}
 
 	while (object1 >= cps1_object)
 	{
@@ -681,8 +712,22 @@ static void cps1_render_object(void)
 		code = object1->code;
 		attr = object1->attr;
 		object1--;
+		loop_count++;
+
+		/* Debug the first few iterations */
+		if (debug_count < 5 && loop_count <= 3) {
+			fprintf(stderr, "[render_object] loop %d: code=%u pen_usage=%d (obj_num=%u)\n",
+				loop_count, code,
+				(code < cps1_object_num) ? cps1_object_pen_usage[code] : -1,
+				cps1_object_num);
+		}
 
 		SCAN_OBJECT(blit_draw_object)
+	}
+
+	if (debug_count < 5) {
+		fprintf(stderr, "[render_object] end: loops=%d\n", loop_count);
+		debug_count++;
 	}
 
 	blit_finish_object();
@@ -690,7 +735,7 @@ static void cps1_render_object(void)
 
 
 /*------------------------------------------------------
-	g—p’†‚ÌƒXƒvƒ‰ƒCƒg‚ğƒ`ƒFƒbƒN
+	ï¿½gï¿½pï¿½ï¿½ï¿½ÌƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½`ï¿½Fï¿½bï¿½N
 ------------------------------------------------------*/
 
 void cps1_scan_object(void)
@@ -750,11 +795,11 @@ void cps1_scan_object(void)
 	}
 
 /*------------------------------------------------------
-	•`‰æ
+	ï¿½`ï¿½ï¿½
 ------------------------------------------------------*/
 
 #define DRAW_SCROLL1													\
-	if (cps1_scroll_pen_usage[gfxset][code])							\
+	if ((cps1_scroll_pen_usage[gfxset][code]))							\
 	{																	\
 		attr = cps_scroll1[offs + 1];									\
 		blit_draw_scroll1(sx, sy, code, attr, gfxset);					\
@@ -770,11 +815,11 @@ static void cps1_render_scroll1_normal(void)
 #define DRAW_SCROLL1													\
 	attr  = cps_scroll1[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (cps1_scroll_pen_usage[gfxset][code] & (tpens ^ 0x7fff))			\
+	if ((cps1_scroll_pen_usage[gfxset][code] & (tpens ^ 0x7fff)))			\
 	{																	\
 		blit_draw_scroll1(sx, sy, code, attr, gfxset);					\
 	}																	\
-	if (cps1_scroll_pen_usage[gfxset][code] & tpens)					\
+	if ((cps1_scroll_pen_usage[gfxset][code] & tpens))					\
 	{																	\
 		blit_draw_scroll1h(sx, sy, code, attr, tpens, gfxset);			\
 	}
@@ -799,11 +844,11 @@ static void cps1_render_scroll1(void)
 
 
 /*------------------------------------------------------
-	g—p’†‚ÌƒXƒvƒ‰ƒCƒg‚ğƒXƒLƒƒƒ“
+	ï¿½gï¿½pï¿½ï¿½ï¿½ÌƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½Xï¿½Lï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------*/
 
 #define DRAW_SCROLL1													\
-	if (cps1_scroll_pen_usage[gfxset][code])							\
+	if ((cps1_scroll_pen_usage[gfxset][code]))							\
 	{																	\
 		attr = cps_scroll1[offs + 1];									\
 		blit_update_scroll1(sx, sy, code, attr);						\
@@ -819,7 +864,7 @@ static void cps1_scan_scroll1_normal(void)
 #define DRAW_SCROLL1													\
 	attr  = cps_scroll1[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (cps1_scroll_pen_usage[gfxset][code] & (tpens ^ 0x7fff))			\
+	if ((cps1_scroll_pen_usage[gfxset][code] & (tpens ^ 0x7fff)))			\
 	{																	\
 		blit_update_scroll1(sx, sy, code, attr);						\
 	}
@@ -835,7 +880,7 @@ static void cps1_scan_scroll1_background(void)
 #define DRAW_SCROLL1													\
 	attr  = cps_scroll1[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (cps1_scroll_pen_usage[gfxset][code] & tpens)					\
+	if ((cps1_scroll_pen_usage[gfxset][code] & tpens))					\
 	{																	\
 		blit_update_scrollh(sx, sy, code, attr);						\
 	}
@@ -910,7 +955,7 @@ void cps1_scan_scroll1(void)
 
 
 /*------------------------------------------------------
-	•`‰æ
+	ï¿½`ï¿½ï¿½
 ------------------------------------------------------*/
 
 #define BLIT_SET_CLIP_FUNC		blit_set_clip_scroll2(scroll2[block].start, scroll2[block].end);
@@ -918,7 +963,7 @@ void cps1_scan_scroll1(void)
 #define BLIT_FINISH_FUNC		blit_finish_scroll2();
 
 #define DRAW_SCROLL2													\
-	if (pen_usage[code])												\
+	if ((pen_usage[code]))												\
 	{																	\
 		attr = cps_scroll2[offs + 1];									\
 		blit_draw_scroll2(sx, sy, code, attr);							\
@@ -934,11 +979,11 @@ static void cps1_render_scroll2_normal(void)
 #define DRAW_SCROLL2													\
 	attr  = cps_scroll2[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (pen_usage[code] & (tpens ^ 0x7fff))								\
+	if ((pen_usage[code] & (tpens ^ 0x7fff)))								\
 	{																	\
 		blit_draw_scroll2(sx, sy, code, attr);							\
 	}																	\
-	if (pen_usage[code] & tpens)										\
+	if ((pen_usage[code] & tpens))										\
 	{																	\
 		blit_draw_scroll2h(sx, sy, code, attr, tpens);					\
 	}
@@ -954,7 +999,7 @@ static void cps1_render_scroll2_separate(void)
 #define DRAW_SCROLL2													\
 	attr  = cps_scroll2[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (pen_usage[code] & (tpens ^ 0x7fff))								\
+	if ((pen_usage[code] & (tpens ^ 0x7fff)))								\
 	{																	\
 		blit_draw_scroll2(sx, sy, code, attr);							\
 	}
@@ -973,7 +1018,7 @@ static void cps1_render_scroll2_background(void)
 #define DRAW_SCROLL2													\
 	attr  = cps_scroll2[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (pen_usage[code] & tpens)										\
+	if ((pen_usage[code] & tpens))										\
 	{																	\
 		blit_draw_scroll2h(sx, sy, code, attr, tpens);					\
 	}
@@ -1014,7 +1059,7 @@ static void cps1_render_scroll2(void)
 
 
 /*------------------------------------------------------
-	g—p’†‚ÌƒXƒvƒ‰ƒCƒg‚ğƒ`ƒFƒbƒN
+	ï¿½gï¿½pï¿½ï¿½ï¿½ÌƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½`ï¿½Fï¿½bï¿½N
 ------------------------------------------------------*/
 
 #define BLIT_SET_CLIP_FUNC
@@ -1022,7 +1067,7 @@ static void cps1_render_scroll2(void)
 #define BLIT_FINISH_FUNC
 
 #define DRAW_SCROLL2													\
-	if (pen_usage[code])												\
+	if ((pen_usage[code]))												\
 	{																	\
 		attr = cps_scroll2[offs + 1];									\
 		blit_update_scroll2(sx, sy, code, attr);						\
@@ -1038,7 +1083,7 @@ static void cps1_scan_scroll2_normal(void)
 #define DRAW_SCROLL2													\
 	attr  = cps_scroll2[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (pen_usage[code] & (tpens ^ 0x7fff))								\
+	if ((pen_usage[code] & (tpens ^ 0x7fff)))								\
 	{																	\
 		blit_update_scroll2(sx, sy, code, attr);						\
 	}
@@ -1054,7 +1099,7 @@ static void cps1_scan_scroll2_background(void)
 #define DRAW_SCROLL2													\
 	attr  = cps_scroll2[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (pen_usage[code] & tpens)										\
+	if ((pen_usage[code] & tpens))										\
 	{																	\
 		blit_update_scroll2h(sx, sy, code, attr);						\
 	}
@@ -1081,7 +1126,7 @@ void cps1_scan_scroll2(void)
 
 
 /*------------------------------------------------------
-	ƒ‰ƒCƒ“ƒXƒNƒ[ƒ‹ŒvZ
+	ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½Xï¿½Nï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½vï¿½Z
 ------------------------------------------------------*/
 
 static void cps1_check_scroll2_distort(int distort)
@@ -1184,11 +1229,11 @@ static void cps1_check_scroll2_distort(int distort)
 	}
 
 /*------------------------------------------------------
-	•`‰æ
+	ï¿½`ï¿½ï¿½
 ------------------------------------------------------*/
 
 #define DRAW_SCROLL3													\
-	if (pen_usage[code])												\
+	if ((pen_usage[code]))												\
 	{																	\
 		attr = cps_scroll3[offs + 1];									\
 		blit_draw_scroll3(sx, sy, code, attr);							\
@@ -1204,11 +1249,11 @@ static void cps1_render_scroll3_normal(void)
 #define DRAW_SCROLL3													\
 	attr  = cps_scroll3[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (pen_usage[code] & (tpens ^ 0x7fff))								\
+	if ((pen_usage[code] & (tpens ^ 0x7fff)))								\
 	{																	\
 		blit_draw_scroll3(sx, sy, code, attr);							\
 	}																	\
-	if (pen_usage[code] & tpens)										\
+	if ((pen_usage[code] & tpens))										\
 	{																	\
 		blit_draw_scroll3h(sx, sy, code, attr, tpens);					\
 	}
@@ -1233,11 +1278,11 @@ static void cps1_render_scroll3(void)
 
 
 /*------------------------------------------------------
-	g—p’†‚ÌƒXƒvƒ‰ƒCƒg‚ğƒXƒLƒƒƒ“
+	ï¿½gï¿½pï¿½ï¿½ï¿½ÌƒXï¿½vï¿½ï¿½ï¿½Cï¿½gï¿½ï¿½ï¿½Xï¿½Lï¿½ï¿½ï¿½ï¿½
 ------------------------------------------------------*/
 
 #define DRAW_SCROLL3													\
-	if (pen_usage[code])												\
+	if ((pen_usage[code]))												\
 	{																	\
 		attr = cps_scroll3[offs + 1];									\
 		blit_update_scroll3(sx, sy, code, attr);						\
@@ -1253,7 +1298,7 @@ static void cps1_scan_scroll3_normal(void)
 #define DRAW_SCROLL3													\
 	attr  = cps_scroll3[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (pen_usage[code] & (tpens ^ 0x7fff))								\
+	if ((pen_usage[code] & (tpens ^ 0x7fff)))								\
 	{																	\
 		blit_update_scroll3(sx, sy, code, attr);						\
 	}
@@ -1269,7 +1314,7 @@ static void cps1_scan_scroll3_background(void)
 #define DRAW_SCROLL3													\
 	attr  = cps_scroll3[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
-	if (pen_usage[code] & tpens)										\
+	if ((pen_usage[code] & tpens))										\
 	{																	\
 		blit_update_scrollh(sx, sy, code, attr);						\
 	}
@@ -1322,11 +1367,11 @@ static void cps1_render_stars(UINT16 layer_ctrl)
 
 
 /******************************************************************************
-	‰æ–ÊXVˆ—
+	ï¿½ï¿½ÊXï¿½Vï¿½ï¿½ï¿½ï¿½
 ******************************************************************************/
 
 /*------------------------------------------------------
-	ƒŒƒCƒ„[‚ğ•`‰æ
+	ï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½[ï¿½ï¿½`ï¿½ï¿½
 ------------------------------------------------------*/
 
 static void cps1_render_layer(int layer)
@@ -1351,11 +1396,20 @@ static void cps1_render_layer(int layer)
 }
 
 /*------------------------------------------------------
-	‰æ–ÊXV
+	ï¿½ï¿½ÊXï¿½V
 ------------------------------------------------------*/
 
 void cps1_screenrefresh(void)
 {
+	{
+		static int call_count = 0;
+		if (call_count < 5)
+		{
+			fprintf(stderr, "[cps1_screenrefresh] CALLED %d\n", call_count);
+			call_count++;
+		}
+	}
+
 	int i, l0, l1, l2, l3;
 	UINT16 video_ctrl = cps1_port(CPS1_VIDEO_CONTROL);
 	UINT16 layer_ctrl = cps1_port(driver->layer_control);
@@ -1448,6 +1502,15 @@ void cps1_screenrefresh(void)
 
 	blit_start(cps1_high_layer);
 
+	{
+		static int refresh_count = 0;
+		if (refresh_count < 5)
+		{
+			fprintf(stderr, "[cps1_screenrefresh] layers l0=%d l1=%d l2=%d l3=%d\n", l0, l1, l2, l3);
+			refresh_count++;
+		}
+	}
+
 	if (cps1_has_stars) cps1_render_stars(layer_ctrl);
 	cps1_render_layer(l0);
 	cps1_render_layer(l1);
@@ -1457,7 +1520,7 @@ void cps1_screenrefresh(void)
 
 
 /*------------------------------------------------------
-	object RAMXV
+	object RAMï¿½Xï¿½V
 ------------------------------------------------------*/
 
 void cps1_objram_latch(void)
@@ -1516,11 +1579,33 @@ void cps1_objram_latch(void)
 	cps1_last_object = --object;
 
 	cps1_build_palette();
+
+#ifdef PLATFORM_SDL
+	if (njemu_debug && (frames_displayed % 60) == 0)
+	{
+		UINT32 obj_count = (cps1_last_object >= cps1_object) ? (UINT32)(cps1_last_object - cps1_object + 1) : 0;
+		UINT32 scroll1_nonzero = 0, scroll2_nonzero = 0, scroll3_nonzero = 0;
+		UINT32 i;
+		UINT16 *s1 = cps1_base(CPS1_SCROLL1_BASE, cps1_scroll_mask);
+		UINT16 *s2 = cps1_base(CPS1_SCROLL2_BASE, cps1_scroll_mask);
+		UINT16 *s3 = cps1_base(CPS1_SCROLL3_BASE, cps1_scroll_mask);
+
+		for (i = 0; i < (cps1_scroll_size >> 1); i++)
+		{
+			scroll1_nonzero += (s1[i] != 0);
+			scroll2_nonzero += (s2[i] != 0);
+			scroll3_nonzero += (s3[i] != 0);
+		}
+
+		fprintf(stderr, "[cps1] dbg obj_cnt=%u scroll1_nz=%u scroll2_nz=%u scroll3_nz=%u\n",
+			obj_count, scroll1_nonzero, scroll2_nonzero, scroll3_nonzero);
+	}
+#endif
 }
 
 
 /******************************************************************************
-	ƒZ[ƒu/ƒ[ƒh ƒXƒe[ƒg
+	ï¿½Zï¿½[ï¿½u/ï¿½ï¿½ï¿½[ï¿½h ï¿½Xï¿½eï¿½[ï¿½g
 ******************************************************************************/
 
 #ifdef SAVE_STATE

@@ -9,7 +9,11 @@
 #ifndef M68000_H
 #define M68000_H
 
+#ifndef USE_MUSASHI_M68K
 #include "c68k.h"
+#else
+#include "cpu/Musashi/m68k.h"
+#endif
 
 // MAMEŒİŠ·‚ÌƒŒƒWƒXƒ^”Ô† (ˆê•”–¢‘Î‰)
 enum
@@ -32,6 +36,7 @@ void m68000_set_irq_line(int irqline, int state);
 void m68000_set_irq_callback(int (*callback)(int irqline));
 UINT32  m68000_get_reg(int regnum);
 void m68000_set_reg(int regnum, UINT32 val);
+int *m68000_get_icount_ptr(void);
 
 #if (EMU_SYSTEM == CPS2)
 void m68000_set_encrypted_range(UINT32 start, UINT32 end, void *decrypted_rom);
